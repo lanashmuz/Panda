@@ -15,6 +15,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
+import javax.swing.ButtonGroup;
+import javax.swing.JRadioButton;
 
 
 /**
@@ -58,6 +60,32 @@ public class GameSetupFrame extends JFrame {
 	setupPanel.add(playerCountPanel, BorderLayout.NORTH);
 	setupPanel.add(playerDetailsPanel, BorderLayout.CENTER);
 	
+	// Create the difficulty selection panel
+	JPanel difficultyPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+	JLabel difficultyLabel = new JLabel("Difficuly:");
+	
+	JRadioButton easyButton = new JRadioButton("Easy", true);
+	JRadioButton mediumButton = new JRadioButton("Medium");
+	JRadioButton hardButton = new JRadioButton("Hard");
+	
+	// Only Easy mode is available for Iteration 1
+	mediumButton.setEnabled(false);
+	hardButton.setEnabled(false);
+	
+	// Allow only one difficulty to be selected
+	ButtonGroup difficultyGroup = new ButtonGroup();
+    difficultyGroup.add(easyButton);
+    difficultyGroup.add(mediumButton);
+    difficultyGroup.add(hardButton);
+    
+    // Add difficulty options to the setup menu
+    difficultyPanel.add(difficultyLabel);
+    difficultyPanel.add(easyButton);
+    difficultyPanel.add(mediumButton);
+    difficultyPanel.add(hardButton);
+    
+    setupPanel.add(difficultyPanel, BorderLayout.SOUTH);
+    
 	mainPanel.add(setupPanel, BorderLayout.NORTH);
 	
 	// Display color validation messages
