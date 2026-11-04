@@ -15,8 +15,14 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.border.EmptyBorder;
+
 import javax.swing.ButtonGroup;
 import javax.swing.JRadioButton;
+import javax.swing.JButton;
+import javax.swing.JOptionPane;
+
+import Model.Player;
+import Model.GameConfiguration;
 
 
 /**
@@ -31,6 +37,9 @@ public class GameSetupFrame extends JFrame {
 	
 	// Store the color selection boxes for validation
 	private final List<JComboBox<String>> colorComboBoxes = new ArrayList<>();
+	
+	// Store player name fields for creating player objects
+	private final List<JTextField> playerNameFields = new ArrayList<>();
 	
 	// Creates and configures the game setup window.
 	public GameSetupFrame() {
@@ -91,9 +100,16 @@ public class GameSetupFrame extends JFrame {
 	// Display color validation messages
 	colorWarningLabel = new JLabel("");
 	colorWarningLabel.setForeground(Color.RED);
-	mainPanel.add(colorWarningLabel, BorderLayout.SOUTH);
+
+	// Create the bottom panel with validation messages and Start button
+	JPanel bottomPanel = new JPanel(new BorderLayout(0, 10));
+	bottomPanel.add(colorWarningLabel,BorderLayout.NORTH);
 	
+	JButton startButton = new JButton("Start Game");
+	startButton.addActionListener(e -> handleStartGame());
 	
+	bottomPanel.add(startButton, BorderLayout.SOUTH);
+	mainPanel.add(bottomPanel, BorderLayout.SOUTH);
 	// Update the name fields when the player count changes
 	playerCountComboBox.addActionListener(e -> updatePlayerNameFields());
 	
@@ -107,6 +123,7 @@ public class GameSetupFrame extends JFrame {
 	// Updates player name and color fields based on player count
 	private void updatePlayerNameFields() {
 		playerDetailsPanel.removeAll();
+		playerNameFields.clear();
 		colorComboBoxes.clear();
 		
 		int count = (Integer) playerCountComboBox.getSelectedItem();
@@ -116,6 +133,7 @@ public class GameSetupFrame extends JFrame {
 			// Add a name field for each player
 			JLabel nameLabel = new JLabel("Player " + i + ":");
 			JTextField nameField= new JTextField(15);
+			playerNameFields.add(nameField);
 			// Add a color selection box for each player
 			JComboBox<String> colorComboBox = new JComboBox<>(colors);
 			colorComboBox.setSelectedIndex(i - 1);
@@ -154,5 +172,51 @@ public class GameSetupFrame extends JFrame {
 		colorWarningLabel.setText("");
 		return true;
 	}
+	
+	// Creates a game configuration from the selected player details
+	private GameConfiguration buildGameConfiguration() {
+		List<Player> players = new ArrayList<>();
+		
+		// Collect each player's name and selected color
+		for (int i = 0; i < playerNameFields.size(); i++) {
+			String name = playerNameFields.get(i).getText().trim();
+	        String color = (String) colorComboBoxes.get(i).getSelectedItem();
 
+	        players.add(new Player(name, color));
+	    }
+		
+		// Easy is the only available difficulty in Iteration 1
+		return new GameConfiguration(players, "Easy");
+
+		}
+	
+
+    /**
+     * Validates player details before preparing the game.
+     */
+    private void handleStartGame() {
+
+        // Check that every player has a name.
+        for (JTextField nameField : playerNameFields) {
+            if (nameField.getText().trim().isEmpty()) {
+                JOptionPane.showMessageDialog(this,
+                        "Please enter a name for every player.");
+                return;
+            }
+        }
+
+        // Prevent starting with duplicate colors.
+        if (!validateUniqueColors()) {
+            JOptionPane.showMessageDialog(this,
+                    "Each player must have a unique color.");
+            return;
+        }
+
+        // Prepare the configuration for future board initialization.
+        GameConfiguration configuration = buildGameConfiguration();
+
+        JOptionPane.showMessageDialog(this, "Setup is valid for "
+                + configuration.getPlayers().size()
+                + " players. Board connection is not implemented yet.");
+    }
 }
