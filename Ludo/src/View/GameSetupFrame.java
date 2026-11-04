@@ -122,6 +122,19 @@ public class GameSetupFrame extends JFrame {
 	
 	// Updates player name and color fields based on player count
 	private void updatePlayerNameFields() {
+
+        // Preserve existing player details when the count changes
+        List<String> previousNames = new ArrayList<>();
+        List<String> previousColors = new ArrayList<>();
+
+        for (JTextField nameField : playerNameFields) {
+            previousNames.add(nameField.getText());
+        }
+
+        for (JComboBox<String> colorBox : colorComboBoxes) {
+            previousColors.add((String) colorBox.getSelectedItem());
+        }
+
 		playerDetailsPanel.removeAll();
 		playerNameFields.clear();
 		colorComboBoxes.clear();
@@ -133,10 +146,22 @@ public class GameSetupFrame extends JFrame {
 			// Add a name field for each player
 			JLabel nameLabel = new JLabel("Player " + i + ":");
 			JTextField nameField= new JTextField(15);
+            // Restore the name if this player already existed
+            if (i <= previousNames.size()) {
+                nameField.setText(previousNames.get(i - 1));
+            }
+
 			playerNameFields.add(nameField);
 			// Add a color selection box for each player
 			JComboBox<String> colorComboBox = new JComboBox<>(colors);
-			colorComboBox.setSelectedIndex(i - 1);
+
+            // Restore the previous color or assign a default color
+            if (i <= previousColors.size()) {
+                colorComboBox.setSelectedItem(previousColors.get(i - 1));
+            } else {
+                colorComboBox.setSelectedIndex(i - 1);
+            }
+
 			// Validate colors whenever a selection changes
 			colorComboBox.addActionListener(e -> validateUniqueColors());
 			colorComboBoxes.add(colorComboBox);
@@ -192,11 +217,11 @@ public class GameSetupFrame extends JFrame {
 	
 
     /**
-     * Validates player details before preparing the game.
+     * Validates player details before preparing the game
      */
     private void handleStartGame() {
 
-        // Check that every player has a name.
+        // Check that every player has a name
         for (JTextField nameField : playerNameFields) {
             if (nameField.getText().trim().isEmpty()) {
                 JOptionPane.showMessageDialog(this,
@@ -205,14 +230,14 @@ public class GameSetupFrame extends JFrame {
             }
         }
 
-        // Prevent starting with duplicate colors.
+        // Prevent starting with duplicate colors
         if (!validateUniqueColors()) {
             JOptionPane.showMessageDialog(this,
                     "Each player must have a unique color.");
             return;
         }
 
-        // Prepare the configuration for future board initialization.
+        // Prepare the configuration for future board initialization
         GameConfiguration configuration = buildGameConfiguration();
 
         JOptionPane.showMessageDialog(this, "Setup is valid for "
