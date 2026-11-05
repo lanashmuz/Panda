@@ -24,6 +24,7 @@ import javax.swing.JOptionPane;
 import Model.Player;
 import Model.GameConfiguration;
 
+import java.util.function.Consumer;
 
 /**
  * Represents the game setup window.
@@ -34,6 +35,7 @@ public class GameSetupFrame extends JFrame {
 	private JComboBox<Integer> playerCountComboBox;
 	private JPanel playerDetailsPanel;
 	private JLabel colorWarningLabel;
+	private Consumer<GameConfiguration> onStartGame;
 	
 	// Store the color selection boxes for validation
 	private final List<JComboBox<String>> colorComboBoxes = new ArrayList<>();
@@ -220,30 +222,30 @@ public class GameSetupFrame extends JFrame {
      * Validates player details before preparing the game
      */
     private void handleStartGame() {
-
-        // Check that every player has a name
-        for (JTextField nameField : playerNameFields) {
-            if (nameField.getText().trim().isEmpty()) {
-                JOptionPane.showMessageDialog(this,
-                        "Please enter a name for every player.");
-                return;
-            }
-        }
-
-        // Prevent starting with duplicate colors
-        if (!validateUniqueColors()) {
-            JOptionPane.showMessageDialog(this,
-                    "Each player must have a unique color.");
-            return;
-        }
-
-        // Prepare the configuration for future board initialization
-        GameConfiguration configuration = buildGameConfiguration();
-
-        JOptionPane.showMessageDialog(this, "Setup is valid for "
-                + configuration.getPlayers().size()
-                + " players. Board connection is not implemented yet.");
-    }
+		// Check that every player has a name
+		for (JTextField nameField : playerNameFields) {
+			if (nameField.getText().trim().isEmpty()) {
+				JOptionPane.showMessageDialog(this,
+						"Please enter a name for every player.");
+				return;
+			}
+		}
+	
+		// Prevent starting with duplicate colors
+		if (!validateUniqueColors()) {
+			JOptionPane.showMessageDialog(this,
+					"Each player must have a unique color.");
+			return;
+		}
+	
+		if (onStartGame == null) {
+			throw new IllegalStateException("Start Game handler is missing.");
+		}
+	
+		// Pass the selected configuration to the controller
+		GameConfiguration configuration = buildGameConfiguration();
+		onStartGame.accept(configuration);
+	}
     
     // Locks the setup fields after the game starts
     private void lockSetupFields() {
@@ -261,4 +263,8 @@ public class GameSetupFrame extends JFrame {
     		colorBox.setEditable(false);
     	}
     }
+
+	public void setOnStartGame(Consumer<GameConfiguration> onStartGame) {
+		this.onStartGame = onStartGame;
+	}
 }
