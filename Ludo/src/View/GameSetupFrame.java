@@ -244,4 +244,21 @@ public class GameSetupFrame extends JFrame {
                 + configuration.getPlayers().size()
                 + " players. Board connection is not implemented yet.");
     }
+    
+    // Locks the setup fields after the game starts
+    private void lockSetupFields() {
+    	
+    	// Prevent changes to the number of players
+    	playerCountComboBox.setEnabled(false);
+    	
+    	// Present changes to player names
+    	for (JTextField nameField : playerNameFields) {
+    		nameField.setEditable(false);
+    	}
+    	
+    	// Prevent changes to player colors
+    	for (JComboBox<String> colorBox : colorComboBoxes) {
+    		colorBox.setEditable(false);
+    	}
+    }
 }
