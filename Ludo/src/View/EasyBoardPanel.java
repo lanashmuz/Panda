@@ -7,18 +7,15 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
-
 import javax.swing.JPanel;
-
 import Model.EasyBoard;
 import Model.Square;
 import Model.SquareType;
-
 import java.awt.Polygon;
-
 import Model.Castle;
 import Model.HomePath;
 import Model.Piece;
+import java.awt.BasicStroke;
 
 // Draws the common path using data from the board model.
 public class EasyBoardPanel extends JPanel {
@@ -165,71 +162,69 @@ public class EasyBoardPanel extends JPanel {
     }
 
     // Draws all castle areas and the pieces currently inside them.
-private void drawCastles(Graphics2D g2, int cellSize) {
+    private void drawCastles(Graphics2D g2, int cellSize) {
 
-    for (Square square : board.getCommonPath()) {
-        if (square.getType() != SquareType.START) {
-            continue;
-        }
-
-        String color = square.getPlayerColor();
-        int[] origin = castleCell(color);
-
-        int x = origin[1] * cellSize;
-        int y = origin[0] * cellSize;
-        int size = 6 * cellSize;
-
-        g2.setColor(colorFor(color));
-        g2.fillRect(x, y, size, size);
-
-        g2.setColor(Color.DARK_GRAY);
-        g2.drawRect(x, y, size - 1, size - 1);
-
-        g2.setColor(Color.WHITE);
-        g2.fillRoundRect(
-            x + cellSize,
-            y + cellSize,
-            4 * cellSize,
-            4 * cellSize,
-            cellSize,
-            cellSize
-        );
-
-        g2.setColor(Color.DARK_GRAY);
-        g2.drawRoundRect(
-            x + cellSize,
-            y + cellSize,
-            4 * cellSize - 1,
-            4 * cellSize - 1,
-            cellSize,
-            cellSize
-        );
-    }
-
-    for (Castle castle : board.getCastles()) {
-        int[] origin = castleCell(castle.getPlayerColor());
-
-        for (Piece piece : castle.getPieces()) {
-            int id = piece.getId();
-
-            int centerX =
-                (origin[1] + 2 + 2 * (id % 2)) * cellSize;
-
-            int centerY =
-                (origin[0] + 2 + 2 * (id / 2)) * cellSize;
-
-            int diameter = cellSize;
-            int x = centerX - diameter / 2;
-            int y = centerY - diameter / 2;
-
-            g2.setColor(colorFor(piece.getPlayerColor()));
-            g2.fillOval(x, y, diameter, diameter);
-
+        for (Square square : board.getCommonPath()) {
+            if (square.getType() != SquareType.START) {
+                continue;
+            }
+    
+            String color = square.getPlayerColor();
+            int[] origin = castleCell(color);
+    
+            int x = origin[1] * cellSize;
+            int y = origin[0] * cellSize;
+            int size = 6 * cellSize;
+    
+            g2.setColor(colorFor(color));
+            g2.fillRect(x, y, size, size);
+    
             g2.setColor(Color.DARK_GRAY);
-            g2.drawOval(x, y, diameter - 1, diameter - 1);
+            g2.drawRect(x, y, size - 1, size - 1);
+    
+            g2.setColor(Color.WHITE);
+            g2.fillRoundRect(
+                x + cellSize,
+                y + cellSize,
+                4 * cellSize,
+                4 * cellSize,
+                cellSize,
+                cellSize
+            );
+    
+            g2.setColor(Color.DARK_GRAY);
+            g2.drawRoundRect(
+                x + cellSize,
+                y + cellSize,
+                4 * cellSize - 1,
+                4 * cellSize - 1,
+                cellSize,
+                cellSize
+            );
+        }
+    
+        for (Castle castle : board.getCastles()) {
+            int[] origin = castleCell(castle.getPlayerColor());
+    
+            for (Piece piece : castle.getPieces()) {
+                int id = piece.getId();
+    
+                int centerX =
+                    (origin[1] + 2 + 2 * (id % 2)) * cellSize;
+    
+                int centerY =
+                    (origin[0] + 2 + 2 * (id / 2)) * cellSize;
+    
+                drawPandaPiece(
+                    g2,
+                    piece.getPlayerColor(),
+                    centerX - cellSize / 2,
+                    centerY - cellSize / 2,
+                    cellSize
+                );
+            }
         }
     }
-}
 
 // Returns the top-left grid cell of a castle.
 private int[] castleCell(String playerColor) {
@@ -329,4 +324,81 @@ private void drawFinishTriangle(
     g2.setColor(Color.DARK_GRAY);
     g2.drawPolygon(triangle);
 }
+// Draws a panda face in a lighter shade of the player's color.
+private void drawPandaPiece(
+    Graphics2D g2,
+    String playerColor,
+    int x,
+    int y,
+    int size
+) {
+    Graphics2D panda = (Graphics2D) g2.create();
+
+    try {
+        panda.translate(x, y);
+        panda.scale(size / 100.0, size / 100.0);
+
+        Color base = colorFor(playerColor);
+
+        Color face = new Color(
+            (base.getRed() + 3 * 255) / 4,
+            (base.getGreen() + 3 * 255) / 4,
+            (base.getBlue() + 3 * 255) / 4
+        );
+
+        Color dark = new Color(32, 35, 40);
+
+        panda.setStroke(new BasicStroke(
+            3f,
+            BasicStroke.CAP_ROUND,
+            BasicStroke.JOIN_ROUND
+        ));
+
+        // Subtle shadow.
+        panda.setColor(new Color(0, 0, 0, 25));
+        panda.fillOval(12, 20, 84, 78);
+
+        // Ears.
+        panda.setColor(dark);
+        panda.fillOval(7, 2, 30, 30);
+        panda.fillOval(63, 2, 30, 30);
+
+        // Face and player-color outline.
+        panda.setColor(face);
+        panda.fillOval(8, 14, 84, 82);
+
+        panda.setColor(base.darker());
+        panda.drawOval(8, 14, 84, 82);
+
+        // Eye patches.
+        panda.setColor(dark);
+        panda.fillOval(21, 34, 24, 31);
+        panda.fillOval(55, 34, 24, 31);
+
+        // Eyes.
+        panda.setColor(Color.WHITE);
+        panda.fillOval(29, 44, 9, 11);
+        panda.fillOval(62, 44, 9, 11);
+
+        panda.setColor(dark);
+        panda.fillOval(33, 48, 5, 6);
+        panda.fillOval(63, 48, 5, 6);
+
+        // Cheeks.
+        panda.setColor(new Color(245, 159, 170));
+        panda.fillOval(16, 64, 14, 7);
+        panda.fillOval(69, 64, 14, 7);
+
+        // Nose and smile.
+        panda.setColor(dark);
+        panda.fillOval(43, 61, 14, 10);
+        panda.drawLine(50, 70, 50, 74);
+        panda.drawArc(38, 68, 12, 12, 180, 180);
+        panda.drawArc(50, 68, 12, 12, 180, 180);
+
+    } finally {
+        panda.dispose();
+    }
+}
+
 }
