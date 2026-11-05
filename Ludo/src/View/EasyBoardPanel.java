@@ -14,6 +14,12 @@ import Model.EasyBoard;
 import Model.Square;
 import Model.SquareType;
 
+import java.awt.Polygon;
+
+import Model.Castle;
+import Model.HomePath;
+import Model.Piece;
+
 // Draws the common path using data from the board model.
 public class EasyBoardPanel extends JPanel {
 
@@ -47,39 +53,44 @@ public class EasyBoardPanel extends JPanel {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-
+    
         int cellSize = Math.min(getWidth(), getHeight()) / GRID_SIZE;
-
+    
         if (cellSize < 1) {
             return;
         }
-
+    
         Graphics2D g2 = (Graphics2D) g.create();
-
+    
         try {
             g2.setRenderingHint(
                 RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON
             );
-
+    
             int left = (getWidth() - GRID_SIZE * cellSize) / 2;
             int top = (getHeight() - GRID_SIZE * cellSize) / 2;
-
+    
             g2.translate(left, top);
             g2.setFont(new Font(
                 Font.DIALOG,
                 Font.BOLD,
                 Math.max(12, cellSize / 2)
             ));
-
+    
+            drawCastles(g2, cellSize);
+    
             for (Square square : board.getCommonPath()) {
                 int[] position = PATH_CELLS[square.getIndex()];
-
+    
                 int x = position[1] * cellSize;
                 int y = position[0] * cellSize;
-
+    
                 drawSquare(g2, square, x, y, cellSize);
             }
+    
+            drawHomePaths(g2, cellSize);
+    
         } finally {
             g2.dispose();
         }
@@ -152,4 +163,170 @@ public class EasyBoardPanel extends JPanel {
             default -> "";
         };
     }
+
+    // Draws all castle areas and the pieces currently inside them.
+private void drawCastles(Graphics2D g2, int cellSize) {
+
+    for (Square square : board.getCommonPath()) {
+        if (square.getType() != SquareType.START) {
+            continue;
+        }
+
+        String color = square.getPlayerColor();
+        int[] origin = castleCell(color);
+
+        int x = origin[1] * cellSize;
+        int y = origin[0] * cellSize;
+        int size = 6 * cellSize;
+
+        g2.setColor(colorFor(color));
+        g2.fillRect(x, y, size, size);
+
+        g2.setColor(Color.DARK_GRAY);
+        g2.drawRect(x, y, size - 1, size - 1);
+
+        g2.setColor(Color.WHITE);
+        g2.fillRoundRect(
+            x + cellSize,
+            y + cellSize,
+            4 * cellSize,
+            4 * cellSize,
+            cellSize,
+            cellSize
+        );
+
+        g2.setColor(Color.DARK_GRAY);
+        g2.drawRoundRect(
+            x + cellSize,
+            y + cellSize,
+            4 * cellSize - 1,
+            4 * cellSize - 1,
+            cellSize,
+            cellSize
+        );
+    }
+
+    for (Castle castle : board.getCastles()) {
+        int[] origin = castleCell(castle.getPlayerColor());
+
+        for (Piece piece : castle.getPieces()) {
+            int id = piece.getId();
+
+            int centerX =
+                (origin[1] + 2 + 2 * (id % 2)) * cellSize;
+
+            int centerY =
+                (origin[0] + 2 + 2 * (id / 2)) * cellSize;
+
+            int diameter = cellSize;
+            int x = centerX - diameter / 2;
+            int y = centerY - diameter / 2;
+
+            g2.setColor(colorFor(piece.getPlayerColor()));
+            g2.fillOval(x, y, diameter, diameter);
+
+            g2.setColor(Color.DARK_GRAY);
+            g2.drawOval(x, y, diameter - 1, diameter - 1);
+        }
+    }
+}
+
+// Returns the top-left grid cell of a castle.
+private int[] castleCell(String playerColor) {
+    return switch (playerColor) {
+        case "Green" -> new int[] {0, 0};
+        case "Yellow" -> new int[] {0, 9};
+        case "Blue" -> new int[] {9, 9};
+        case "Red" -> new int[] {9, 0};
+        default -> throw new IllegalArgumentException(
+            "Unknown color: " + playerColor
+        );
+    };
+}
+
+// Draws the physical home lanes for all four board colors.
+private void drawHomePaths(Graphics2D g2, int cellSize) {
+    for (Square square : board.getCommonPath()) {
+        if (square.getType() != SquareType.ARROW) {
+            continue;
+        }
+
+        String color = square.getPlayerColor();
+
+        for (int i = 0; i < HomePath.LENGTH - 1; i++) {
+            int[] position = homeCell(color, i);
+
+            int x = position[1] * cellSize;
+            int y = position[0] * cellSize;
+
+            g2.setColor(colorFor(color));
+            g2.fillRect(x, y, cellSize, cellSize);
+
+            g2.setColor(Color.DARK_GRAY);
+            g2.drawRect(x, y, cellSize - 1, cellSize - 1);
+        }
+
+        drawFinishTriangle(g2, color, cellSize);
+    }
+}
+
+// Returns the grid position of a rectangular home-path square.
+private int[] homeCell(String playerColor, int index) {
+    return switch (playerColor) {
+        case "Green" -> new int[] {7, 1 + index};
+        case "Yellow" -> new int[] {1 + index, 7};
+        case "Blue" -> new int[] {7, 13 - index};
+        case "Red" -> new int[] {13 - index, 7};
+        default -> throw new IllegalArgumentException(
+            "Unknown color: " + playerColor
+        );
+    };
+}
+
+// Draws the final home position as a colored center triangle.
+private void drawFinishTriangle(
+    Graphics2D g2,
+    String playerColor,
+    int cellSize
+) {
+    int low = 6 * cellSize;
+    int high = 9 * cellSize;
+    int middle = GRID_SIZE * cellSize / 2;
+
+    Polygon triangle = switch (playerColor) {
+        case "Green" -> new Polygon(
+            new int[] {low, middle, low},
+            new int[] {low, middle, high},
+            3
+        );
+
+        case "Yellow" -> new Polygon(
+            new int[] {low, high, middle},
+            new int[] {low, low, middle},
+            3
+        );
+
+        case "Blue" -> new Polygon(
+            new int[] {high, high, middle},
+            new int[] {low, high, middle},
+            3
+        );
+
+        case "Red" -> new Polygon(
+            new int[] {low, middle, high},
+            new int[] {high, middle, high},
+            3
+        );
+
+        default -> throw new IllegalArgumentException(
+            "Unknown color: " + playerColor
+        );
+    };
+
+    g2.setColor(colorFor(playerColor));
+    g2.fillPolygon(triangle);
+
+    g2.setColor(Color.DARK_GRAY);
+    g2.drawPolygon(triangle);
+}
 }
