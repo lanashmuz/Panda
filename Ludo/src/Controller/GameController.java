@@ -1,5 +1,8 @@
 package Controller;
 
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+
 import Model.EasyBoard;
 import Model.GameConfiguration;
 import View.EasyBoardFrame;
@@ -18,7 +21,20 @@ public class GameController {
         EasyBoard board = new EasyBoard(configuration);
         EasyBoardFrame boardFrame = new EasyBoardFrame(board);
 
+        // Close the board when Back is clicked
+        boardFrame.setOnBackToMainMenu(boardFrame::dispose);
+
+        // Return to setup after closing the board
+        boardFrame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                setupFrame.setVisible(true);
+            }
+        });
+
         boardFrame.setVisible(true);
-        setupFrame.dispose();
+
+        // Keep the setup window and its entered details
+        setupFrame.setVisible(false);
     }
 }
