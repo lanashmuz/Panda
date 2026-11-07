@@ -53,4 +53,28 @@ public class PieceMovement {
     	}
     	return false;
     }
+
+    // finds the starting square of the selected piece
+    public Square findStartSquare(EasyBoard board, Piece piece) {
+
+        if (board == null || piece == null) {
+            throw new IllegalArgumentException(
+                "Board and piece cannot be null"
+            );
+        }
+
+        for (Square square : board.getCommonPath()) {
+            if (square.getType() == SquareType.START
+                    && piece.getPlayerColor()
+                            .equals(square.getPlayerColor())) {
+                return square;
+            }
+        }
+
+        throw new IllegalStateException(
+            "Starting square not found for "
+                    + piece.getPlayerColor()
+        );
+    }
+
 }
