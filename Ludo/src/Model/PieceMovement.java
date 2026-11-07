@@ -31,4 +31,26 @@ public class PieceMovement {
     	}
     	return piece.getPlayerColor().equals(player.getColor());
     }
+    
+    // checks whether a player can select a piece from their castle
+    public boolean canSelectCastlePiece(Piece piece, Player player, Castle castle, int diceResault) {
+    	if (piece == null || player == null || castle == null) {
+    		return false;
+    	}
+    	if (!canExitCastle(diceResault)) {
+    		return false;
+    	}
+    	if (!belongsToPlayer(piece, player)) {
+    		return false;
+    	}
+    	if (!castle.getPlayerColor().equals(player.getColor())) {
+    		return false;
+    	}
+    	for (Piece castlePiece : castle.getPieces()) {
+    		if (castlePiece == piece) {
+    			return true;
+    		}
+    	}
+    	return false;
+    }
 }
