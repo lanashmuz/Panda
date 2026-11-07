@@ -23,4 +23,12 @@ public class PieceMovement {
 
         return diceResult;
     }
+    
+    // checks if the selected piece belongs to the given player
+    public boolean belongsToPlayer(Piece piece, Player player) {
+    	if (piece == null || player == null) {
+    		return false;
+    	}
+    	return piece.getPlayerColor().equals(player.getColor());
+    }
 }
