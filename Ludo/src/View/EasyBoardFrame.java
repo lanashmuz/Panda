@@ -34,6 +34,8 @@ public class EasyBoardFrame extends JFrame {
         JPanel mainPanel = new JPanel(new BorderLayout());
         mainPanel.add(navigationPanel, BorderLayout.NORTH);
         mainPanel.add(new EasyBoardPanel(board), BorderLayout.CENTER);
+        // Display the dice controls below the board.
+        mainPanel.add(new DicePanel(), BorderLayout.SOUTH);
 
         setContentPane(mainPanel);
 
