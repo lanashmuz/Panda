@@ -1,5 +1,6 @@
 package View;
 
+import Model.GameState;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -21,6 +22,7 @@ import java.awt.BasicStroke;
 public class EasyBoardPanel extends JPanel {
 
     private static final int GRID_SIZE = 15;
+    private GameState gameState;
 
     // Each pair contains {row, column}, ordered by model index.
     private static final int[][] PATH_CELLS = {
@@ -45,6 +47,15 @@ public class EasyBoardPanel extends JPanel {
 
         setPreferredSize(new Dimension(600, 600));
         setBackground(new Color(245, 247, 250));
+    }
+    
+    // connect the board display to the current game state
+    public void setGameState(GameState gameState) {
+    	if (gameState == null) {
+    		throw new IllegalArgumentException("Game state can't br null");
+    	}
+    	this.gameState = gameState;
+    	repaint();
     }
 
     @Override
@@ -87,6 +98,7 @@ public class EasyBoardPanel extends JPanel {
             }
     
             drawHomePaths(g2, cellSize);
+            drawMovedPieces(g2,cellSize);
     
         } finally {
             g2.dispose();
@@ -207,6 +219,11 @@ public class EasyBoardPanel extends JPanel {
             int[] origin = castleCell(castle.getPlayerColor());
     
             for (Piece piece : castle.getPieces()) {
+            	//don't draw pieces that have already left the castle
+            	if (gameState != null && !gameState.isInCastle(piece)) {
+            		continue;
+            	}
+            	
                 int id = piece.getId();
     
                 int centerX =
@@ -400,5 +417,92 @@ private void drawPandaPiece(
         panda.dispose();
     }
 }
+
+
+// Returns a grid cell inside the player's
+// colored finish triangle.
+private int[] finishCell(String playerColor) {
+
+    return switch (playerColor) {
+
+        case "Green" -> new int[] {7, 6};
+
+        case "Yellow" -> new int[] {6, 7};
+
+        case "Blue" -> new int[] {7, 8};
+
+        case "Red" -> new int[] {8, 7};
+
+        default -> throw new IllegalArgumentException(
+            "Unknown color: " + playerColor
+        );
+    };
+}
+
+
+// Draws pieces according to their current positions
+// in the game state.
+private void drawMovedPieces(
+        Graphics2D g2, int cellSize) {
+
+    if (gameState == null) {
+        return;
+    }
+
+    for (Piece piece : gameState.getPieces()) {
+
+        GameState.PiecePosition position =
+                gameState.getPiecePosition(piece);
+
+        int[] cell;
+
+        switch (position.getZone()) {
+
+            case BOARD_PATH:
+
+                if (position.getPath()
+                        != GameState.BoardPathId.PATH_52) {
+                    continue;
+                }
+
+                cell = PATH_CELLS[position.getIndex()];
+                break;
+
+            case HOME_PATH:
+
+                if (position.getIndex() < HomePath.LENGTH - 1) {
+                    cell = homeCell(
+                        piece.getPlayerColor(),
+                        position.getIndex()
+                    );
+                } else {
+                    cell = finishCell(
+                        piece.getPlayerColor()
+                    );
+                }
+                break;
+
+            case FINISHED:
+                cell = finishCell(piece.getPlayerColor());
+                break;
+
+            case CASTLE:
+            default:
+                continue;
+        }
+
+        int x = cell[1] * cellSize;
+        int y = cell[0] * cellSize;
+
+        drawPandaPiece(
+            g2,
+            piece.getPlayerColor(),
+            x,
+            y,
+            cellSize
+        );
+    }
+}
+
 
 }
