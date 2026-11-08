@@ -9,10 +9,12 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 
 import Model.EasyBoard;
+import Model.GameState;
 
 public class EasyBoardFrame extends JFrame {
 
     private Runnable onBackToMainMenu;
+    private final EasyBoardPanel boardPanel;
 
     public EasyBoardFrame(EasyBoard board) {
         setTitle("Panda - Easy Board");
@@ -33,8 +35,9 @@ public class EasyBoardFrame extends JFrame {
 
         JPanel mainPanel = new JPanel(new BorderLayout());
         mainPanel.add(navigationPanel, BorderLayout.NORTH);
-        mainPanel.add(new EasyBoardPanel(board), BorderLayout.CENTER);
-
+        boardPanel = new EasyBoardPanel(board);
+        mainPanel.add(boardPanel, BorderLayout.CENTER);
+        
         setContentPane(mainPanel);
 
         pack();
@@ -45,4 +48,10 @@ public class EasyBoardFrame extends JFrame {
     public void setOnBackToMainMenu(Runnable onBackToMainMenu) {
         this.onBackToMainMenu = onBackToMainMenu;
     }
+    
+    // connect the board panel to the current game state
+    public void setGameState(GameState gameState) {
+    	boardPanel.setGameState(gameState);
+    }
+    
 }

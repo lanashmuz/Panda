@@ -5,6 +5,7 @@ import java.awt.event.WindowEvent;
 
 import Model.EasyBoard;
 import Model.GameConfiguration;
+import Model.GameState;
 import View.EasyBoardFrame;
 import View.GameSetupFrame;
 
@@ -19,8 +20,14 @@ public class GameController {
 
     private void startGame(GameConfiguration configuration) {
         EasyBoard board = new EasyBoard(configuration);
+        
+        // initialize the positions of all pieces
+        GameState gameState = new GameState(configuration, board.getCastles());
+        
+        // create the game window and connect its state
         EasyBoardFrame boardFrame = new EasyBoardFrame(board);
-
+        boardFrame.setGameState(gameState);
+        
         // Close the board when Back is clicked
         boardFrame.setOnBackToMainMenu(boardFrame::dispose);
 
