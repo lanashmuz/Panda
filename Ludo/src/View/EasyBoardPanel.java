@@ -17,12 +17,19 @@ import Model.Castle;
 import Model.HomePath;
 import Model.Piece;
 import java.awt.BasicStroke;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.function.Consumer;
+import java.awt.Cursor;
+import java.awt.event.MouseMotionAdapter;
 
 // Draws the common path using data from the board model.
 public class EasyBoardPanel extends JPanel {
 
     private static final int GRID_SIZE = 15;
+    private final EasyBoard board;
     private GameState gameState;
+    private Consumer<Piece> onPieceSelected;
 
     // Each pair contains {row, column}, ordered by model index.
     private static final int[][] PATH_CELLS = {
@@ -40,13 +47,38 @@ public class EasyBoardPanel extends JPanel {
         {7, 0}, {6, 0}
     };
 
-    private final EasyBoard board;
 
     public EasyBoardPanel(EasyBoard board) {
         this.board = board;
 
         setPreferredSize(new Dimension(600, 600));
         setBackground(new Color(245, 247, 250));
+
+        // detects when a player clicks on a game piece
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                Piece selectedPiece = findClickedPiece(e.getX(), e.getY());
+
+                if (selectedPiece != null && onPieceSelected != null) {
+                    onPieceSelected.accept(selectedPiece);
+                }
+            }
+        });
+
+        // changes the cursor when hovering over a piece
+        addMouseMotionListener(new MouseMotionAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                Piece hoveredPiece = findClickedPiece(e.getX(), e.getY());
+
+                if (hoveredPiece != null) {
+                    setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+                } else {
+                    setCursor(Cursor.getDefaultCursor());
+                }
+            }
+        });
     }
     
     // connect the board display to the current game state
@@ -243,266 +275,361 @@ public class EasyBoardPanel extends JPanel {
         }
     }
 
-// Returns the top-left grid cell of a castle.
-private int[] castleCell(String playerColor) {
-    return switch (playerColor) {
-        case "Green" -> new int[] {0, 0};
-        case "Yellow" -> new int[] {0, 9};
-        case "Blue" -> new int[] {9, 9};
-        case "Red" -> new int[] {9, 0};
-        default -> throw new IllegalArgumentException(
-            "Unknown color: " + playerColor
-        );
-    };
-}
+	// Returns the top-left grid cell of a castle.
+	private int[] castleCell(String playerColor) {
+	    return switch (playerColor) {
+	        case "Green" -> new int[] {0, 0};
+	        case "Yellow" -> new int[] {0, 9};
+	        case "Blue" -> new int[] {9, 9};
+	        case "Red" -> new int[] {9, 0};
+	        default -> throw new IllegalArgumentException(
+	            "Unknown color: " + playerColor
+	        );
+	    };
+	}
+	
+	// Draws the physical home lanes for all four board colors.
+	private void drawHomePaths(Graphics2D g2, int cellSize) {
+	    for (Square square : board.getCommonPath()) {
+	        if (square.getType() != SquareType.ARROW) {
+	            continue;
+	        }
+	
+	        String color = square.getPlayerColor();
+	
+	        for (int i = 0; i < HomePath.LENGTH - 1; i++) {
+	            int[] position = homeCell(color, i);
+	
+	            int x = position[1] * cellSize;
+	            int y = position[0] * cellSize;
+	
+	            g2.setColor(colorFor(color));
+	            g2.fillRect(x, y, cellSize, cellSize);
+	
+	            g2.setColor(Color.DARK_GRAY);
+	            g2.drawRect(x, y, cellSize - 1, cellSize - 1);
+	        }
+	
+	        drawFinishTriangle(g2, color, cellSize);
+	    }
+	}
 
-// Draws the physical home lanes for all four board colors.
-private void drawHomePaths(Graphics2D g2, int cellSize) {
-    for (Square square : board.getCommonPath()) {
-        if (square.getType() != SquareType.ARROW) {
-            continue;
+	// Returns the grid position of a rectangular home-path square.
+	private int[] homeCell(String playerColor, int index) {
+	    return switch (playerColor) {
+	        case "Green" -> new int[] {7, 1 + index};
+	        case "Yellow" -> new int[] {1 + index, 7};
+	        case "Blue" -> new int[] {7, 13 - index};
+	        case "Red" -> new int[] {13 - index, 7};
+	        default -> throw new IllegalArgumentException(
+	            "Unknown color: " + playerColor
+	        );
+	    };
+	}
+
+	// Draws the final home position as a colored center triangle.
+	private void drawFinishTriangle(
+	    Graphics2D g2,
+	    String playerColor,
+	    int cellSize
+	) {
+	    int low = 6 * cellSize;
+	    int high = 9 * cellSize;
+	    int middle = GRID_SIZE * cellSize / 2;
+	
+	    Polygon triangle = switch (playerColor) {
+	        case "Green" -> new Polygon(
+	            new int[] {low, middle, low},
+	            new int[] {low, middle, high},
+	            3
+	        );
+	
+	        case "Yellow" -> new Polygon(
+	            new int[] {low, high, middle},
+	            new int[] {low, low, middle},
+	            3
+	        );
+	
+	        case "Blue" -> new Polygon(
+	            new int[] {high, high, middle},
+	            new int[] {low, high, middle},
+	            3
+	        );
+	
+	        case "Red" -> new Polygon(
+	            new int[] {low, middle, high},
+	            new int[] {high, middle, high},
+	            3
+	        );
+	
+	        default -> throw new IllegalArgumentException(
+	            "Unknown color: " + playerColor
+	        );
+	    };
+	
+	    g2.setColor(colorFor(playerColor));
+	    g2.fillPolygon(triangle);
+	
+	    g2.setColor(Color.DARK_GRAY);
+	    g2.drawPolygon(triangle);
+	}
+	// Draws a panda face in a lighter shade of the player's color.
+	private void drawPandaPiece(
+	    Graphics2D g2,
+	    String playerColor,
+	    int x,
+	    int y,
+	    int size
+	) {
+	    Graphics2D panda = (Graphics2D) g2.create();
+	
+	    try {
+	        panda.translate(x, y);
+	        panda.scale(size / 100.0, size / 100.0);
+	
+	        Color base = colorFor(playerColor);
+	
+	        Color face = new Color(
+	            (base.getRed() + 3 * 255) / 4,
+	            (base.getGreen() + 3 * 255) / 4,
+	            (base.getBlue() + 3 * 255) / 4
+	        );
+	
+	        Color dark = new Color(32, 35, 40);
+	
+	        panda.setStroke(new BasicStroke(
+	            3f,
+	            BasicStroke.CAP_ROUND,
+	            BasicStroke.JOIN_ROUND
+	        ));
+	
+	        // Subtle shadow.
+	        panda.setColor(new Color(0, 0, 0, 25));
+	        panda.fillOval(12, 20, 84, 78);
+	
+	        // Ears.
+	        panda.setColor(dark);
+	        panda.fillOval(7, 2, 30, 30);
+	        panda.fillOval(63, 2, 30, 30);
+	
+	        // Face and player-color outline.
+	        panda.setColor(face);
+	        panda.fillOval(8, 14, 84, 82);
+	
+	        panda.setColor(base.darker());
+	        panda.drawOval(8, 14, 84, 82);
+	
+	        // Eye patches.
+	        panda.setColor(dark);
+	        panda.fillOval(21, 34, 24, 31);
+	        panda.fillOval(55, 34, 24, 31);
+	
+	        // Eyes.
+	        panda.setColor(Color.WHITE);
+	        panda.fillOval(29, 44, 9, 11);
+	        panda.fillOval(62, 44, 9, 11);
+	
+	        panda.setColor(dark);
+	        panda.fillOval(33, 48, 5, 6);
+	        panda.fillOval(63, 48, 5, 6);
+	
+	        // Cheeks.
+	        panda.setColor(new Color(245, 159, 170));
+	        panda.fillOval(16, 64, 14, 7);
+	        panda.fillOval(69, 64, 14, 7);
+	
+	        // Nose and smile.
+	        panda.setColor(dark);
+	        panda.fillOval(43, 61, 14, 10);
+	        panda.drawLine(50, 70, 50, 74);
+	        panda.drawArc(38, 68, 12, 12, 180, 180);
+	        panda.drawArc(50, 68, 12, 12, 180, 180);
+	
+	    } finally {
+	        panda.dispose();
+	    }
+	}
+	
+	
+	// Returns a grid cell inside the player's
+	// colored finish triangle.
+	private int[] finishCell(String playerColor) {
+	
+	    return switch (playerColor) {
+	
+	        case "Green" -> new int[] {7, 6};
+	
+	        case "Yellow" -> new int[] {6, 7};
+	
+	        case "Blue" -> new int[] {7, 8};
+	
+	        case "Red" -> new int[] {8, 7};
+	
+	        default -> throw new IllegalArgumentException(
+	            "Unknown color: " + playerColor
+	        );
+	    };
+	}
+	
+	
+	// Draws pieces according to their current positions
+	// in the game state.
+	private void drawMovedPieces(
+	        Graphics2D g2, int cellSize) {
+	
+	    if (gameState == null) {
+	        return;
+	    }
+	
+	    for (Piece piece : gameState.getPieces()) {
+	
+	        GameState.PiecePosition position =
+	                gameState.getPiecePosition(piece);
+	
+	        int[] cell;
+	
+	        switch (position.getZone()) {
+	
+	            case BOARD_PATH:
+	
+	                if (position.getPath()
+	                        != GameState.BoardPathId.PATH_52) {
+	                    continue;
+	                }
+	
+	                cell = PATH_CELLS[position.getIndex()];
+	                break;
+	
+	            case HOME_PATH:
+	
+	                if (position.getIndex() < HomePath.LENGTH - 1) {
+	                    cell = homeCell(
+	                        piece.getPlayerColor(),
+	                        position.getIndex()
+	                    );
+	                } else {
+	                    cell = finishCell(
+	                        piece.getPlayerColor()
+	                    );
+	                }
+	                break;
+	
+	            case FINISHED:
+	                cell = finishCell(piece.getPlayerColor());
+	                break;
+	
+	            case CASTLE:
+	            default:
+	                continue;
+	        }
+	
+	        int x = cell[1] * cellSize;
+	        int y = cell[0] * cellSize;
+	
+	        drawPandaPiece(
+	            g2,
+	            piece.getPlayerColor(),
+	            x,
+	            y,
+	            cellSize
+	        );
+	    }
+	}
+
+    // registers a callback for piece selection
+    public void setOnPieceSelected(Consumer<Piece> onPieceSelected) {
+        this.onPieceSelected = onPieceSelected;
+    }
+
+
+    // identifies the piece at the clicked screen position
+    private Piece findClickedPiece(int mouseX, int mouseY) {
+        if (gameState == null) {
+            return null;
         }
 
-        String color = square.getPlayerColor();
-
-        for (int i = 0; i < HomePath.LENGTH - 1; i++) {
-            int[] position = homeCell(color, i);
-
-            int x = position[1] * cellSize;
-            int y = position[0] * cellSize;
-
-            g2.setColor(colorFor(color));
-            g2.fillRect(x, y, cellSize, cellSize);
-
-            g2.setColor(Color.DARK_GRAY);
-            g2.drawRect(x, y, cellSize - 1, cellSize - 1);
+        int cellSize = Math.min(getWidth(), getHeight()) / GRID_SIZE;
+        if (cellSize < 1) {
+            return null;
         }
 
-        drawFinishTriangle(g2, color, cellSize);
-    }
-}
+        int left = (getWidth() - GRID_SIZE * cellSize) / 2;
+        int top = (getHeight() - GRID_SIZE * cellSize) / 2;
 
-// Returns the grid position of a rectangular home-path square.
-private int[] homeCell(String playerColor, int index) {
-    return switch (playerColor) {
-        case "Green" -> new int[] {7, 1 + index};
-        case "Yellow" -> new int[] {1 + index, 7};
-        case "Blue" -> new int[] {7, 13 - index};
-        case "Red" -> new int[] {13 - index, 7};
-        default -> throw new IllegalArgumentException(
-            "Unknown color: " + playerColor
-        );
-    };
-}
+        int x = mouseX - left;
+        int y = mouseY - top;
 
-// Draws the final home position as a colored center triangle.
-private void drawFinishTriangle(
-    Graphics2D g2,
-    String playerColor,
-    int cellSize
-) {
-    int low = 6 * cellSize;
-    int high = 9 * cellSize;
-    int middle = GRID_SIZE * cellSize / 2;
-
-    Polygon triangle = switch (playerColor) {
-        case "Green" -> new Polygon(
-            new int[] {low, middle, low},
-            new int[] {low, middle, high},
-            3
-        );
-
-        case "Yellow" -> new Polygon(
-            new int[] {low, high, middle},
-            new int[] {low, low, middle},
-            3
-        );
-
-        case "Blue" -> new Polygon(
-            new int[] {high, high, middle},
-            new int[] {low, high, middle},
-            3
-        );
-
-        case "Red" -> new Polygon(
-            new int[] {low, middle, high},
-            new int[] {high, middle, high},
-            3
-        );
-
-        default -> throw new IllegalArgumentException(
-            "Unknown color: " + playerColor
-        );
-    };
-
-    g2.setColor(colorFor(playerColor));
-    g2.fillPolygon(triangle);
-
-    g2.setColor(Color.DARK_GRAY);
-    g2.drawPolygon(triangle);
-}
-// Draws a panda face in a lighter shade of the player's color.
-private void drawPandaPiece(
-    Graphics2D g2,
-    String playerColor,
-    int x,
-    int y,
-    int size
-) {
-    Graphics2D panda = (Graphics2D) g2.create();
-
-    try {
-        panda.translate(x, y);
-        panda.scale(size / 100.0, size / 100.0);
-
-        Color base = colorFor(playerColor);
-
-        Color face = new Color(
-            (base.getRed() + 3 * 255) / 4,
-            (base.getGreen() + 3 * 255) / 4,
-            (base.getBlue() + 3 * 255) / 4
-        );
-
-        Color dark = new Color(32, 35, 40);
-
-        panda.setStroke(new BasicStroke(
-            3f,
-            BasicStroke.CAP_ROUND,
-            BasicStroke.JOIN_ROUND
-        ));
-
-        // Subtle shadow.
-        panda.setColor(new Color(0, 0, 0, 25));
-        panda.fillOval(12, 20, 84, 78);
-
-        // Ears.
-        panda.setColor(dark);
-        panda.fillOval(7, 2, 30, 30);
-        panda.fillOval(63, 2, 30, 30);
-
-        // Face and player-color outline.
-        panda.setColor(face);
-        panda.fillOval(8, 14, 84, 82);
-
-        panda.setColor(base.darker());
-        panda.drawOval(8, 14, 84, 82);
-
-        // Eye patches.
-        panda.setColor(dark);
-        panda.fillOval(21, 34, 24, 31);
-        panda.fillOval(55, 34, 24, 31);
-
-        // Eyes.
-        panda.setColor(Color.WHITE);
-        panda.fillOval(29, 44, 9, 11);
-        panda.fillOval(62, 44, 9, 11);
-
-        panda.setColor(dark);
-        panda.fillOval(33, 48, 5, 6);
-        panda.fillOval(63, 48, 5, 6);
-
-        // Cheeks.
-        panda.setColor(new Color(245, 159, 170));
-        panda.fillOval(16, 64, 14, 7);
-        panda.fillOval(69, 64, 14, 7);
-
-        // Nose and smile.
-        panda.setColor(dark);
-        panda.fillOval(43, 61, 14, 10);
-        panda.drawLine(50, 70, 50, 74);
-        panda.drawArc(38, 68, 12, 12, 180, 180);
-        panda.drawArc(50, 68, 12, 12, 180, 180);
-
-    } finally {
-        panda.dispose();
-    }
-}
-
-
-// Returns a grid cell inside the player's
-// colored finish triangle.
-private int[] finishCell(String playerColor) {
-
-    return switch (playerColor) {
-
-        case "Green" -> new int[] {7, 6};
-
-        case "Yellow" -> new int[] {6, 7};
-
-        case "Blue" -> new int[] {7, 8};
-
-        case "Red" -> new int[] {8, 7};
-
-        default -> throw new IllegalArgumentException(
-            "Unknown color: " + playerColor
-        );
-    };
-}
-
-
-// Draws pieces according to their current positions
-// in the game state.
-private void drawMovedPieces(
-        Graphics2D g2, int cellSize) {
-
-    if (gameState == null) {
-        return;
-    }
-
-    for (Piece piece : gameState.getPieces()) {
-
-        GameState.PiecePosition position =
-                gameState.getPiecePosition(piece);
-
-        int[] cell;
-
-        switch (position.getZone()) {
-
-            case BOARD_PATH:
-
-                if (position.getPath()
-                        != GameState.BoardPathId.PATH_52) {
+        // check pieces that are still in their castles
+        for (Castle castle : board.getCastles()) {
+            int[] origin = castleCell(castle.getPlayerColor());
+            
+            for (Piece piece : castle.getPieces()) {
+                if (!gameState.isInCastle(piece)) {
                     continue;
                 }
 
-                cell = PATH_CELLS[position.getIndex()];
-                break;
+                int id = piece.getId();
 
-            case HOME_PATH:
+                int centerX = (origin[1] + 2 + 2 * (id % 2)) * cellSize;
+                int centerY = (origin[0] + 2 + 2 * (id / 2)) * cellSize;
 
-                if (position.getIndex() < HomePath.LENGTH - 1) {
-                    cell = homeCell(
-                        piece.getPlayerColor(),
-                        position.getIndex()
-                    );
-                } else {
-                    cell = finishCell(
-                        piece.getPlayerColor()
-                    );
+                int pieceX = centerX - cellSize / 2;
+                int pieceY = centerY - cellSize / 2;
+
+                if (isInsidePiece(x, y, pieceX, pieceY, cellSize)) {
+                    return piece;
                 }
-                break;
-
-            case FINISHED:
-                cell = finishCell(piece.getPlayerColor());
-                break;
-
-            case CASTLE:
-            default:
-                continue;
+            }
         }
 
-        int x = cell[1] * cellSize;
-        int y = cell[0] * cellSize;
+        // check pieces that have already left the castle
+        for (Piece piece : gameState.getPieces()) {
+            GameState.PiecePosition position = gameState.getPiecePosition(piece);
+            int[] cell;
 
-        drawPandaPiece(
-            g2,
-            piece.getPlayerColor(),
-            x,
-            y,
-            cellSize
-        );
+            switch (position.getZone()) {
+                case BOARD_PATH:
+                    if (position.getPath() != GameState.BoardPathId.PATH_52) {
+                        continue;
+                    }
+                    cell = PATH_CELLS[position.getIndex()];
+                    break;
+
+                case HOME_PATH:
+                    if (position.getIndex() < HomePath.LENGTH - 1) {
+                        cell = homeCell(piece.getPlayerColor(), position.getIndex());
+                    } else {
+                        cell = finishCell(piece.getPlayerColor());
+                    }
+                    break;
+
+                case FINISHED:
+                    cell = finishCell(piece.getPlayerColor());
+                    break;
+
+                case CASTLE:
+                default:
+                    continue;
+            }
+
+            int pieceX = cell[1] * cellSize;
+            int pieceY = cell[0] * cellSize;
+
+            if (isInsidePiece(x, y, pieceX, pieceY, cellSize)) {
+                return piece;
+            }
+        }
+
+        return null;
     }
-}
+
+    // checks whether the click is inside a piece's area
+    private boolean isInsidePiece(int x, int y, int pieceX, int pieceY, int size) {
+        return x >= pieceX
+                && x < pieceX + size
+                && y >= pieceY
+                && y < pieceY + size;
+    }
 
 
 }

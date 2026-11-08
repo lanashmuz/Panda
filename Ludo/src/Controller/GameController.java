@@ -6,12 +6,14 @@ import java.awt.event.WindowEvent;
 import Model.EasyBoard;
 import Model.GameConfiguration;
 import Model.GameState;
+import Model.Piece;
 import View.EasyBoardFrame;
 import View.GameSetupFrame;
 
 public class GameController {
 
     private final GameSetupFrame setupFrame;
+    private Piece selectedPiece;
 
     public GameController(GameSetupFrame setupFrame) {
         this.setupFrame = setupFrame;
@@ -27,6 +29,11 @@ public class GameController {
         // create the game window and connect its state
         EasyBoardFrame boardFrame = new EasyBoardFrame(board);
         boardFrame.setGameState(gameState);
+        
+        // store the piece selected by the player
+        boardFrame.setOnPieceSelected(piece -> {
+            selectedPiece = piece;
+        });
         
         // Close the board when Back is clicked
         boardFrame.setOnBackToMainMenu(boardFrame::dispose);

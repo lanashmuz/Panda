@@ -10,6 +10,8 @@ import javax.swing.JPanel;
 
 import Model.EasyBoard;
 import Model.GameState;
+import Model.Piece;
+import java.util.function.Consumer;
 
 public class EasyBoardFrame extends JFrame {
 
@@ -52,6 +54,13 @@ public class EasyBoardFrame extends JFrame {
     // connect the board panel to the current game state
     public void setGameState(GameState gameState) {
     	boardPanel.setGameState(gameState);
+    	
     }
+
+    // passes piece selection events to the controller
+    public void setOnPieceSelected(Consumer<Piece> onPieceSelected) {
+        boardPanel.setOnPieceSelected(onPieceSelected);
+    }
+
     
 }
