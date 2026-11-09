@@ -22,6 +22,13 @@ import java.awt.event.MouseEvent;
 import java.util.function.Consumer;
 import java.awt.Cursor;
 import java.awt.event.MouseMotionAdapter;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 // Draws the common path using data from the board model.
 public class EasyBoardPanel extends JPanel {
@@ -474,67 +481,31 @@ public class EasyBoardPanel extends JPanel {
 	
 	// Draws pieces according to their current positions
 	// in the game state.
-	private void drawMovedPieces(
-	        Graphics2D g2, int cellSize) {
+	private void drawMovedPieces(Graphics2D g2, int cellSize) {
 	
 	    if (gameState == null) {
 	        return;
 	    }
 	
-	    for (Piece piece : gameState.getPieces()) {
+	    Map<Piece, Rectangle> pieceBounds =
+	            calculateMovedPieceBounds(cellSize);
 	
-	        GameState.PiecePosition position =
-	                gameState.getPiecePosition(piece);
+	    for (Map.Entry<Piece, Rectangle> entry
+	            : pieceBounds.entrySet()) {
 	
-	        int[] cell;
-	
-	        switch (position.getZone()) {
-	
-	            case BOARD_PATH:
-	
-	                if (position.getPath()
-	                        != GameState.BoardPathId.PATH_52) {
-	                    continue;
-	                }
-	
-	                cell = PATH_CELLS[position.getIndex()];
-	                break;
-	
-	            case HOME_PATH:
-	
-	                if (position.getIndex() < HomePath.LENGTH - 1) {
-	                    cell = homeCell(
-	                        piece.getPlayerColor(),
-	                        position.getIndex()
-	                    );
-	                } else {
-	                    cell = finishCell(
-	                        piece.getPlayerColor()
-	                    );
-	                }
-	                break;
-	
-	            case FINISHED:
-	                cell = finishCell(piece.getPlayerColor());
-	                break;
-	
-	            case CASTLE:
-	            default:
-	                continue;
-	        }
-	
-	        int x = cell[1] * cellSize;
-	        int y = cell[0] * cellSize;
+	        Piece piece = entry.getKey();
+	        Rectangle bounds = entry.getValue();
 	
 	        drawPandaPiece(
-	            g2,
-	            piece.getPlayerColor(),
-	            x,
-	            y,
-	            cellSize
+	                g2,
+	                piece.getPlayerColor(),
+	                bounds.x,
+	                bounds.y,
+	                bounds.width
 	        );
 	    }
 	}
+
 
     // registers a callback for piece selection
     public void setOnPieceSelected(Consumer<Piece> onPieceSelected) {
@@ -582,44 +553,24 @@ public class EasyBoardPanel extends JPanel {
             }
         }
 
-        // check pieces that have already left the castle
-        for (Piece piece : gameState.getPieces()) {
-            GameState.PiecePosition position = gameState.getPiecePosition(piece);
-            int[] cell;
-
-            switch (position.getZone()) {
-                case BOARD_PATH:
-                    if (position.getPath() != GameState.BoardPathId.PATH_52) {
-                        continue;
-                    }
-                    cell = PATH_CELLS[position.getIndex()];
-                    break;
-
-                case HOME_PATH:
-                    if (position.getIndex() < HomePath.LENGTH - 1) {
-                        cell = homeCell(piece.getPlayerColor(), position.getIndex());
-                    } else {
-                        cell = finishCell(piece.getPlayerColor());
-                    }
-                    break;
-
-                case FINISHED:
-                    cell = finishCell(piece.getPlayerColor());
-                    break;
-
-                case CASTLE:
-                default:
-                    continue;
-            }
-
-            int pieceX = cell[1] * cellSize;
-            int pieceY = cell[0] * cellSize;
-
-            if (isInsidePiece(x, y, pieceX, pieceY, cellSize)) {
-                return piece;
-            }
-        }
-
+	    // Check pieces that have already left the castle.
+	    Map<Piece, Rectangle> pieceBounds =
+	            calculateMovedPieceBounds(cellSize);
+	
+	    for (Map.Entry<Piece, Rectangle> entry : pieceBounds.entrySet()) {
+	
+	        Rectangle bounds = entry.getValue();
+	
+	        if (isInsidePiece(
+	                 x,
+	                 y,
+	                 bounds.x,
+	                 bounds.y,
+	                 bounds.width
+	        )) {
+	            return entry.getKey();
+	        }
+	    }
         return null;
     }
 
@@ -630,6 +581,92 @@ public class EasyBoardPanel extends JPanel {
                 && y >= pieceY
                 && y < pieceY + size;
     }
+
+	private int[] cellForMovedPiece(Piece piece) {
+	    GameState.PiecePosition position = gameState.getPiecePosition(piece);
+	    
+	    switch (position.getZone()) {
+	        case BOARD_PATH:
+	            if (position.getPath() != GameState.BoardPathId.PATH_52) {
+	                return null;
+	            }
+	            return PATH_CELLS[position.getIndex()];
+	
+	        case HOME_PATH:
+	            if (position.getIndex() < HomePath.LENGTH - 1) {
+	                return homeCell(piece.getPlayerColor(), position.getIndex());
+	            }
+	            return finishCell(piece.getPlayerColor());
+	
+	        case FINISHED:
+	            return finishCell(piece.getPlayerColor());
+	
+	        case CASTLE:
+	        default:
+	            return null;
+	    }
+	}
+	
+	private Map<Piece, Rectangle> calculateMovedPieceBounds(int cellSize) {
+	
+	    Map<Point, List<Piece>> groups = new LinkedHashMap<>();
+	    Map<Piece, Rectangle> bounds = new LinkedHashMap<>();
+	
+	    if (gameState == null) {
+	        return bounds;
+	    }
+	
+	    // Keep piece order stable when drawing and clicking.
+	    List<Piece> pieces = new ArrayList<>(gameState.getPieces());
+	
+	    pieces.sort(Comparator.comparing(Piece::getPlayerColor)
+	                    .thenComparingInt(Piece::getId));
+	
+	    // Group pieces by their board cell.
+	    for (Piece piece : pieces) {
+	        int[] cell = cellForMovedPiece(piece);
+	        if (cell == null) {
+	            continue;
+	        }
+	
+	        Point cellPoint = new Point(cell[1], cell[0]);
+	
+	        groups.computeIfAbsent(cellPoint,key -> new ArrayList<>()).add(piece);
+	    }
+	
+	    // Allocate a separate drawing area for each piece.
+	    for (Map.Entry<Point, List<Piece>> entry : groups.entrySet()) {
+	        List<Piece> group = entry.getValue();
+	        int count = group.size();
+	        int columns = (int) Math.ceil(Math.sqrt(count));
+	        int rows = (int) Math.ceil((double) count / columns);
+	
+	        int pieceSize = Math.max(1, cellSize / Math.max(columns, rows));
+	
+	        int startX = entry.getKey().x * cellSize
+	                + (cellSize - columns * pieceSize) / 2;
+	
+	        int startY = entry.getKey().y * cellSize
+	                + (cellSize - rows * pieceSize) / 2;
+	
+	        for (int i = 0; i < count; i++) {
+	
+	            int column = i % columns;
+	            int row = i / columns;
+	
+	            int x = startX + column * pieceSize;
+	            int y = startY + row * pieceSize;
+	
+	            bounds.put(
+	                    group.get(i),
+	                    new Rectangle(x, y, pieceSize, pieceSize)
+	            );
+	        }
+	    }
+	
+	    return bounds;
+	}
+
 
 
 }
