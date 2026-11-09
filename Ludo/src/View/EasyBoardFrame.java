@@ -12,11 +12,13 @@ import Model.EasyBoard;
 import Model.GameState;
 import Model.Piece;
 import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 public class EasyBoardFrame extends JFrame {
 
     private Runnable onBackToMainMenu;
     private final EasyBoardPanel boardPanel;
+    private final DicePanel dicePanel;
 
     public EasyBoardFrame(EasyBoard board) {
         setTitle("Panda - Easy Board");
@@ -43,7 +45,8 @@ public class EasyBoardFrame extends JFrame {
         mainPanel.add(boardPanel, BorderLayout.CENTER);
 
         // Display the dice controls below the board
-        mainPanel.add(new DicePanel(), BorderLayout.SOUTH);
+        dicePanel = new DicePanel();
+        mainPanel.add(dicePanel, BorderLayout.SOUTH);
 
         setContentPane(mainPanel);
 
@@ -67,5 +70,15 @@ public class EasyBoardFrame extends JFrame {
         boardPanel.setOnPieceSelected(onPieceSelected);
     }
 
+    // Forwards dice roll events to the controller
+    public void setOnDiceRolled(IntConsumer onDiceRolled) {
+        dicePanel.setOnRoll(onDiceRolled);
+    }
     
+    // Refreshes the board after a piece moves
+    public void refreshBoard() {
+        boardPanel.repaint();
+    }
+
+
 }
