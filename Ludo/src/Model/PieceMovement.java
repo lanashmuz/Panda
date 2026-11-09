@@ -213,22 +213,15 @@ public class PieceMovement {
     }
 
     // Moves a piece clockwise on the Easy board.
-    private boolean moveOnBoard(
-            Piece piece,
-            int steps,
-            EasyBoard board,
-            GameState state) {
+    private boolean moveOnBoard(Piece piece, int steps, EasyBoard board, GameState state) {
 
-        GameState.PiecePosition position =
-            state.getPiecePosition(piece);
+        GameState.PiecePosition position = state.getPiecePosition(piece);
 
-        if (position.getPath()
-                != GameState.BoardPathId.PATH_52) {
+        if (position.getPath() != GameState.BoardPathId.PATH_52) {
             return false;
         }
 
         int currentIndex = position.getIndex();
-
         Square homeArrow = findHomeArrow(board, piece);
 
         int distanceToArrow = Math.floorMod(
@@ -238,60 +231,42 @@ public class PieceMovement {
 
         // Movement remains on the common path.
         if (steps <= distanceToArrow) {
-
-            int newIndex = (
-                currentIndex + steps
-            ) % EasyBoard.PATH_LENGTH;
-
-            state.setBoardPathPosition(
-                piece,
-                GameState.BoardPathId.PATH_52,
-                newIndex
-            );
-
+            int newIndex = (currentIndex + steps) % EasyBoard.PATH_LENGTH;
+            state.setBoardPathPosition(piece, GameState.BoardPathId.PATH_52, newIndex);
             return true;
         }
 
         // Movement continues into the home path.
         int remainingSteps = steps - distanceToArrow;
-
-        if (remainingSteps <= HomePath.LENGTH) {
-
-            state.setHomePathPosition(
-                piece,
-                remainingSteps - 1
-            );
-
-            return true;
-        }
-
-        // Exact number of steps to finish.
-        if (remainingSteps == HomePath.LENGTH + 1) {
-            state.markPieceFinished(piece);
-            return true;
-        }
+        
+		if (remainingSteps < HomePath.LENGTH) {
+		    state.setHomePathPosition(piece, remainingSteps - 1);
+		    return true;
+		}
+		
+		// The sixth home step reaches the finish triangle.
+		if (remainingSteps == HomePath.LENGTH) {
+		    state.markPieceFinished(piece);
+		    return true;
+		}
 
         // Overshooting the finish is not allowed.
         return false;
     }
 
     // Moves a piece along its personal home path.
-    private boolean moveOnHomePath(
-            Piece piece,
-            int steps,
-            GameState state) {
+    private boolean moveOnHomePath(Piece piece, int steps, GameState state) {
 
-        int currentIndex = state.getPiecePosition(piece)
-            .getIndex();
-
+        int currentIndex = state.getPiecePosition(piece).getIndex();
         int newIndex = currentIndex + steps;
 
-        if (newIndex < HomePath.LENGTH) {
+        // The first five positions are regular home squares
+        if (newIndex < HomePath.LENGTH - 1) {
             state.setHomePathPosition(piece, newIndex);
             return true;
         }
-
-        if (newIndex == HomePath.LENGTH) {
+        // The sixth position is the finish
+        if (newIndex == HomePath.LENGTH - 1) {
             state.markPieceFinished(piece);
             return true;
         }
