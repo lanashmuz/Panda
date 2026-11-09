@@ -35,6 +35,7 @@ public class PieceMovement {
     	return piece.getPlayerColor().equals(player.getColor());
     }
     
+    /*
     // checks whether a player can select a piece from their castle
     public boolean canSelectCastlePiece(Piece piece, Player player, Castle castle, int diceResault) {
     	if (piece == null || player == null || castle == null) {
@@ -56,6 +57,7 @@ public class PieceMovement {
     	}
     	return false;
     }
+    */
 
     // finds the starting square of the selected piece
     public Square findStartSquare(EasyBoard board, Piece piece) {

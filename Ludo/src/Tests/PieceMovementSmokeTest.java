@@ -134,6 +134,79 @@ public class PieceMovementSmokeTest {
                 !movement.canMoveEasy(
                         piece, green, 1, board, state));
 
+
+        // Test 9: Clockwise movement across the end
+        // of the circular board path.
+        Piece bluePiece = board.getCastles().stream()
+                .filter(c -> c.getPlayerColor().equals("Blue"))
+                .findFirst()
+                .orElseThrow()
+                .getPieces().get(0);
+
+        state.setBoardPathPosition(
+                bluePiece,
+                GameState.BoardPathId.PATH_52,
+                50
+        );
+
+        boolean wrapped = movement.movePieceEasy(
+                bluePiece, blue, 4, board, state
+        );
+
+        check("Clockwise movement wraps from 50 to 2",
+                wrapped
+                && state.getPiecePosition(bluePiece).getZone()
+                        == GameState.PieceZone.BOARD_PATH
+                && state.getPiecePosition(bluePiece).getIndex() == 2);
+
+        // Test 10: Landing exactly on the blue home arrow.
+        state.setBoardPathPosition(
+                bluePiece,
+                GameState.BoardPathId.PATH_52,
+                22
+        );
+
+        boolean reachedArrow = movement.movePieceEasy(
+                bluePiece, blue, 2, board, state
+        );
+
+        check("Piece stops on its home arrow",
+                reachedArrow
+                && state.getPiecePosition(bluePiece).getZone()
+                        == GameState.PieceZone.BOARD_PATH
+                && state.getPiecePosition(bluePiece).getIndex() == 24);
+
+        // Test 11: Next step enters the home path.
+        boolean enteredHome = movement.movePieceEasy(
+                bluePiece, blue, 1, board, state
+        );
+
+        check("Piece enters home after passing arrow",
+                enteredHome
+                && state.getPiecePosition(bluePiece).getZone()
+                        == GameState.PieceZone.HOME_PATH
+                && state.getPiecePosition(bluePiece).getIndex() == 0);
+
+	     // Test: The finish triangle must not be stored
+	     // as a regular home path position.
+	     boolean invalidHomeIndexRejected = false;
+	
+	     try {
+	         state.setHomePathPosition(
+	                 piece,
+	                 HomePath.LENGTH - 1
+	         );
+	     } catch (IllegalArgumentException e) {
+	         invalidHomeIndexRejected = true;
+	     }
+	
+	     check(
+	         "Finish triangle cannot be stored as HOME_PATH",
+	         invalidHomeIndexRejected
+	     );
+
+        
+        // print  
         System.out.println(
                 "\nAll " + passed + " tests passed!"
         );

@@ -91,7 +91,7 @@ public class EasyBoardPanel extends JPanel {
     // connect the board display to the current game state
     public void setGameState(GameState gameState) {
     	if (gameState == null) {
-    		throw new IllegalArgumentException("Game state can't br null");
+    		throw new IllegalArgumentException("Game state can't be null");
     	}
     	this.gameState = gameState;
     	repaint();
@@ -582,21 +582,27 @@ public class EasyBoardPanel extends JPanel {
                 && y < pieceY + size;
     }
 
+	//
 	private int[] cellForMovedPiece(Piece piece) {
-	    GameState.PiecePosition position = gameState.getPiecePosition(piece);
-	    
+	
+	    GameState.PiecePosition position =
+	            gameState.getPiecePosition(piece);
+	
 	    switch (position.getZone()) {
+	
 	        case BOARD_PATH:
-	            if (position.getPath() != GameState.BoardPathId.PATH_52) {
+	            if (position.getPath()
+	                    != GameState.BoardPathId.PATH_52) {
 	                return null;
 	            }
+	
 	            return PATH_CELLS[position.getIndex()];
 	
 	        case HOME_PATH:
-	            if (position.getIndex() < HomePath.LENGTH - 1) {
-	                return homeCell(piece.getPlayerColor(), position.getIndex());
-	            }
-	            return finishCell(piece.getPlayerColor());
+	            return homeCell(
+	                    piece.getPlayerColor(),
+	                    position.getIndex()
+	            );
 	
 	        case FINISHED:
 	            return finishCell(piece.getPlayerColor());
@@ -606,6 +612,7 @@ public class EasyBoardPanel extends JPanel {
 	            return null;
 	    }
 	}
+
 	
 	private Map<Piece, Rectangle> calculateMovedPieceBounds(int cellSize) {
 	

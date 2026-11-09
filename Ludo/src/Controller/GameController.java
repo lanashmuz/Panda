@@ -6,7 +6,6 @@ import java.awt.event.WindowEvent;
 import Model.EasyBoard;
 import Model.GameConfiguration;
 import Model.GameState;
-import Model.Piece;
 import View.EasyBoardFrame;
 import View.GameSetupFrame;
 import Model.PieceMovement;
@@ -15,7 +14,6 @@ import Model.Player;
 public class GameController {
 
     private final GameSetupFrame setupFrame;
-    private Piece selectedPiece;
     private Integer pendingDiceResult;
 
     public GameController(GameSetupFrame setupFrame) {
@@ -41,7 +39,6 @@ public class GameController {
         boardFrame.setGameState(gameState);
         
         // Reset selection and dice result for the new game
-        selectedPiece = null;
         pendingDiceResult = null;
 
         // Receive the dice result from DicePanel.
@@ -63,7 +60,6 @@ public class GameController {
 		    // No legal move: discard this roll and unlock the die.
 		    if (!hasLegalMove) {
 		        pendingDiceResult = null;
-		        selectedPiece = null;
 		        boardFrame.setDiceRollEnabled(true);
 		    }
 		});
@@ -73,8 +69,6 @@ public class GameController {
         // Handle piece selection and attempt movement.
         boardFrame.setOnPieceSelected(piece -> {
 
-            selectedPiece = piece;
-
             // A piece cannot move before a dice roll.
             if (pendingDiceResult == null) {
                 return;
@@ -82,7 +76,7 @@ public class GameController {
 
             // Attempt to move the selected piece.
             boolean moved = pieceMovement.movePieceEasy(
-                selectedPiece,
+                piece,
                 currentPlayer,
                 pendingDiceResult,
                 board,
@@ -93,7 +87,6 @@ public class GameController {
 
                 // Consume the dice result after a valid move.
                 pendingDiceResult = null;
-                selectedPiece = null;
 
                 // Update the board display.
                 boardFrame.refreshBoard();

@@ -197,7 +197,7 @@ public class GameState {
 
         getPiecePosition(piece);
 
-        if (index < 0 || index >= HomePath.LENGTH) {
+        if (index < 0 || index >= HomePath.LENGTH - 1) {
             throw new IllegalArgumentException(
                     "Invalid home path index");
         }
