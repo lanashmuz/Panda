@@ -270,7 +270,6 @@ public class PieceMovement {
             state.markPieceFinished(piece);
             return true;
         }
-
         return false;
     }
 }
