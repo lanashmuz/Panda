@@ -1,4 +1,5 @@
 package View;
+
 import Controller.GameController;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -13,8 +14,10 @@ import Model.EasyBoard;
 public class EasyBoardFrame extends JFrame {
 
     private Runnable onBackToMainMenu;
+    private DicePanel dicePanel; // Fixes: dicePanel cannot be resolved
 
-    public EasyBoardFrame(EasyBoard board) {
+    // Fixes: The constructor EasyBoardFrame(EasyBoard, GameController) is undefined
+    public EasyBoardFrame(EasyBoard board, GameController gameController) {
         setTitle("Panda - Easy Board");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
@@ -34,9 +37,13 @@ public class EasyBoardFrame extends JFrame {
         JPanel mainPanel = new JPanel(new BorderLayout());
         mainPanel.add(navigationPanel, BorderLayout.NORTH);
         mainPanel.add(new EasyBoardPanel(board), BorderLayout.CENTER);
-        // Display the dice controls below the board.
-//        mainPanel.add(new DicePanel(), BorderLayout.SOUTH);
-        this.dicePanel = new DicePanel(gameController);
+        
+        // Initialize the dice panel with the passed controller
+        this.dicePanel = new DicePanel(gameController); 
+        
+        // Add the dice panel to the bottom of the screen
+        mainPanel.add(this.dicePanel, BorderLayout.SOUTH);
+        
         setContentPane(mainPanel);
         pack();
         setMinimumSize(new Dimension(450, 450));
@@ -46,8 +53,9 @@ public class EasyBoardFrame extends JFrame {
     public void setOnBackToMainMenu(Runnable onBackToMainMenu) {
         this.onBackToMainMenu = onBackToMainMenu;
     }
+    
+    // Allows the GameController to update the UI text
     public DicePanel getDicePanel() {
         return this.dicePanel;
     }
 }
-
