@@ -45,34 +45,29 @@ public class GameController {
         pendingDiceResult = null;
 
         // Receive the dice result from DicePanel.
+		boardFrame.setOnDiceRolled(result -> {
+		    pendingDiceResult = result;
+		    // Check whether at least one piece has a legal move.
+		    boolean hasLegalMove = gameState.getPieces()
+		            .stream()
+		            .anyMatch(piece ->
+		                    pieceMovement.canMoveEasy(
+		                            piece,
+		                            currentPlayer,
+		                            result,
+		                            board,
+		                            gameState
+		                    )
+		            );
+		
+		    // No legal move: discard this roll and unlock the die.
+		    if (!hasLegalMove) {
+		        pendingDiceResult = null;
+		        selectedPiece = null;
+		        boardFrame.setDiceRollEnabled(true);
+		    }
+		});
 
-	boardFrame.setOnDiceRolled(result -> {
-	
-	    pendingDiceResult = result;
-	
-	    // Check whether the current player has a piece
-	    // that can move outside the castle.
-	    boolean hasPieceOnPath = gameState.getPieces()
-	            .stream()
-	            .filter(piece ->
-	                    piece.getPlayerColor()
-	                            .equalsIgnoreCase(currentPlayer.getColor()))
-	            .anyMatch(piece -> {
-	
-	                GameState.PieceZone zone =
-	                        gameState.getPiecePosition(piece).getZone();
-	
-	                return zone == GameState.PieceZone.BOARD_PATH
-	                        || zone == GameState.PieceZone.HOME_PATH;
-	            });
-	
-	    // No piece can leave the castle without rolling 6.
-	    if (result != 6 && !hasPieceOnPath) {
-	
-	        pendingDiceResult = null;
-	        boardFrame.setDiceRollEnabled(true);
-	    }
-	});
 
         
         // Handle piece selection and attempt movement.
