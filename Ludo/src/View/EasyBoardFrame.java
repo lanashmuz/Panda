@@ -1,5 +1,5 @@
 package View;
-
+import Controller.GameController;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -35,10 +35,9 @@ public class EasyBoardFrame extends JFrame {
         mainPanel.add(navigationPanel, BorderLayout.NORTH);
         mainPanel.add(new EasyBoardPanel(board), BorderLayout.CENTER);
         // Display the dice controls below the board.
-        mainPanel.add(new DicePanel(), BorderLayout.SOUTH);
-
+//        mainPanel.add(new DicePanel(), BorderLayout.SOUTH);
+        this.dicePanel = new DicePanel(gameController);
         setContentPane(mainPanel);
-
         pack();
         setMinimumSize(new Dimension(450, 450));
         setLocationRelativeTo(null);
@@ -47,4 +46,8 @@ public class EasyBoardFrame extends JFrame {
     public void setOnBackToMainMenu(Runnable onBackToMainMenu) {
         this.onBackToMainMenu = onBackToMainMenu;
     }
+    public DicePanel getDicePanel() {
+        return this.dicePanel;
+    }
 }
+

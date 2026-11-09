@@ -23,5 +23,14 @@ public class Player {
 	public String toString() {
 		return "Player [name=" + name + ", color=" + color + "]";
 	}
-	
+	// Inside Player.java
+	private boolean finishedGame = false;
+
+	public boolean hasFinishedGame() {
+	    return finishedGame;
+	}
+
+	public void setFinishedGame(boolean finishedGame) {
+	    this.finishedGame = finishedGame;
+	}
 }
