@@ -45,9 +45,35 @@ public class GameController {
         pendingDiceResult = null;
 
         // Receive the dice result from DicePanel.
-        boardFrame.setOnDiceRolled(result -> {
-            pendingDiceResult = result;
-        });
+
+	boardFrame.setOnDiceRolled(result -> {
+	
+	    pendingDiceResult = result;
+	
+	    // Check whether the current player has a piece
+	    // that can move outside the castle.
+	    boolean hasPieceOnPath = gameState.getPieces()
+	            .stream()
+	            .filter(piece ->
+	                    piece.getPlayerColor()
+	                            .equalsIgnoreCase(currentPlayer.getColor()))
+	            .anyMatch(piece -> {
+	
+	                GameState.PieceZone zone =
+	                        gameState.getPiecePosition(piece).getZone();
+	
+	                return zone == GameState.PieceZone.BOARD_PATH
+	                        || zone == GameState.PieceZone.HOME_PATH;
+	            });
+	
+	    // No piece can leave the castle without rolling 6.
+	    if (result != 6 && !hasPieceOnPath) {
+	
+	        pendingDiceResult = null;
+	        boardFrame.setDiceRollEnabled(true);
+	    }
+	});
+
         
         // Handle piece selection and attempt movement.
         boardFrame.setOnPieceSelected(piece -> {
@@ -76,6 +102,9 @@ public class GameController {
 
                 // Update the board display.
                 boardFrame.refreshBoard();
+                
+                // Allow the next dice roll
+                boardFrame.setDiceRollEnabled(true);
             }
         });
 

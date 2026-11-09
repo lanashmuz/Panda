@@ -20,18 +20,26 @@ public class DicePanel extends JPanel {
 	    add(resultLabel);
 	    
 	    // Rolls the die and displays the result
-	    rollButton.addActionListener(e -> {
-	    	int result = stepsDie.roll();
-	    	resultLabel.setText("Result: " + result);
-	    	
-	    	if (onRoll != null) {
-	    		onRoll.accept(result);
-	    	}
-	    });
+		rollButton.addActionListener(e -> {
+		    
+			// Lock the button until the roll is handled.
+		    rollButton.setEnabled(false);
+		    int result = stepsDie.roll();
+		    resultLabel.setText("Result: " + result);
+		    if (onRoll != null) {
+		        onRoll.accept(result);
+		    }
+		});
 	}
 	
 	// Sets the action to perform after rolling the die
 	public void setOnRoll(IntConsumer onRoll) {
 	    this.onRoll = onRoll;
 	}
+	
+	// give controller option to restart the dice
+	public void setRollEnabled(boolean enabled) {
+	    rollButton.setEnabled(enabled);
+	}
+
 }

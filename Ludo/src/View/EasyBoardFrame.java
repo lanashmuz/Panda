@@ -79,6 +79,11 @@ public class EasyBoardFrame extends JFrame {
     public void refreshBoard() {
         boardPanel.repaint();
     }
+	    
+	public void setDiceRollEnabled(boolean enabled) {
+	    dicePanel.setRollEnabled(enabled);
+	}
+
 
 
 }
