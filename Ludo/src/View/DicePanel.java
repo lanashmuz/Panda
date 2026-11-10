@@ -1,4 +1,3 @@
-
 package View;
 
 import Controller.GameController;
@@ -6,12 +5,14 @@ import Model.Player;
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.function.IntConsumer;
 
 public class DicePanel extends JPanel {
     private JButton rollButton;
     private JLabel activePlayerLabel;
     private JLabel diceResultLabel;
     private GameController gameController;
+    private IntConsumer onRoll;
 
     // 1. Pass GameController into the constructor
     public DicePanel(GameController gameController) {
@@ -22,10 +23,13 @@ public class DicePanel extends JPanel {
         diceResultLabel = new JLabel("Roll Result: -");
         rollButton = new JButton("Roll Dice");
 
-        // 3. Update the Action Listener
+        // 3. Update the Action Listener to handle both Turn Logic and Hila's validation
         rollButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                // Lock the button until the roll is handled (Hila's logic)
+                rollButton.setEnabled(false);
+
                 // Fetch the current active player from the controller
                 Player currentPlayer = gameController.getTurnManager().getActivePlayer(); 
                 
@@ -47,43 +51,20 @@ public class DicePanel extends JPanel {
 
     public void updateDiceResultDisplay(int result) {
         diceResultLabel.setText("Roll Result: " + result);
+        
+        // Pass the result to Hila's movement validation logic
+        if (onRoll != null) {
+            onRoll.accept(result);
+        }
+    }
+
+    // Sets the action to perform after rolling the die
+    public void setOnRoll(IntConsumer onRoll) {
+        this.onRoll = onRoll;
+    }
+    
+    // give controller option to restart the dice
+    public void setRollEnabled(boolean enabled) {
+        rollButton.setEnabled(enabled);
     }
 }
-
-//package View;
-//
-//import javax.swing.JButton;
-//import javax.swing.JLabel;
-//import javax.swing.JPanel;
-//import java.awt.FlowLayout;
-//import Model.StepsDie;
-//import java.util.function.IntConsumer;
-
-//public class DicePanel extends JPanel {
-//	private final JButton rollButton = new JButton("Roll Dice");
-//	private final JLabel resultLabel = new JLabel("Result: -");
-//	private final StepsDie stepsDie = new StepsDie();
-//	private IntConsumer onRoll;
-//	
-//	public DicePanel() {
-//	    setLayout(new FlowLayout());
-//
-//	    add(rollButton);
-//	    add(resultLabel);
-//	    
-//	    // Rolls the die and displays the result
-//	    rollButton.addActionListener(e -> {
-//	    	int result = stepsDie.roll();
-//	    	resultLabel.setText("Result: " + result);
-//	    	
-//	    	if (onRoll != null) {
-//	    		onRoll.accept(result);
-//	    	}
-//	    });
-//	}
-//	
-//	// Sets the action to perform after rolling the die
-//	public void setOnRoll(IntConsumer onRoll) {
-//	    this.onRoll = onRoll;
-//	}
-//}

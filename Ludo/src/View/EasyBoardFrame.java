@@ -10,11 +10,16 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 
 import Model.EasyBoard;
+import Model.GameState;
+import Model.Piece;
+import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 public class EasyBoardFrame extends JFrame {
 
     private Runnable onBackToMainMenu;
-    private DicePanel dicePanel; // Fixes: dicePanel cannot be resolved
+    private final EasyBoardPanel boardPanel;
+    private DicePanel dicePanel; 
 
     // Fixes: The constructor EasyBoardFrame(EasyBoard, GameController) is undefined
     public EasyBoardFrame(EasyBoard board, GameController gameController) {
@@ -36,7 +41,10 @@ public class EasyBoardFrame extends JFrame {
 
         JPanel mainPanel = new JPanel(new BorderLayout());
         mainPanel.add(navigationPanel, BorderLayout.NORTH);
-        mainPanel.add(new EasyBoardPanel(board), BorderLayout.CENTER);
+        
+        // create and display the game board
+        boardPanel = new EasyBoardPanel(board);
+        mainPanel.add(boardPanel, BorderLayout.CENTER);
         
         // Initialize the dice panel with the passed controller
         this.dicePanel = new DicePanel(gameController); 
@@ -58,4 +66,28 @@ public class EasyBoardFrame extends JFrame {
     public DicePanel getDicePanel() {
         return this.dicePanel;
     }
+
+    // connect the board panel to the current game state
+    public void setGameState(GameState gameState) {
+    	boardPanel.setGameState(gameState);
+    }
+
+    // passes piece selection events to the controller
+    public void setOnPieceSelected(Consumer<Piece> onPieceSelected) {
+        boardPanel.setOnPieceSelected(onPieceSelected);
+    }
+
+    // Forwards dice roll events to the controller
+    public void setOnDiceRolled(IntConsumer onDiceRolled) {
+        dicePanel.setOnRoll(onDiceRolled);
+    }
+    
+    // Refreshes the board after a piece moves
+    public void refreshBoard() {
+        boardPanel.repaint();
+    }
+	    
+	public void setDiceRollEnabled(boolean enabled) {
+	    dicePanel.setRollEnabled(enabled);
+	}
 }
