@@ -1,8 +1,10 @@
 package Controller;
 
-import java.util.List;
-
 import Model.Player;
+import Model.EasyBoard;
+import Model.GameState;
+import Model.PieceMovement;
+import java.util.List;
 
 public class TurnManager {
     private List<Player> players;
@@ -21,16 +23,14 @@ public class TurnManager {
         return players.get(currentPlayerIndex);
     }
 
-    // Controls dice rolling permissions based on active player and turn state
     public boolean canRollDice(Player player) {
         return waitingForRoll && player.equals(getActivePlayer());
     }
 
-    // Core turn logic to be called right after the Steps Die is rolled
-    public void handleDiceRoll(int stepsDieResult) {
+    // Core turn logic called right after the Steps Die is rolled
+    public void handleDiceRoll(int stepsDieResult, EasyBoard board, GameState gameState, PieceMovement pieceMovement) {
         if (!waitingForRoll) return;
 
-        // Track consecutive sixes (FR 8.6)
         if (stepsDieResult == 6) {
             consecutiveSixes++;
             if (consecutiveSixes == 3) {
@@ -44,21 +44,16 @@ public class TurnManager {
 
         waitingForRoll = false;
 
-        // Check for available legal moves (FR 8.8 & 8.9)
-        // Note: hasLegalMove() should be implemented in conjunction with Hila's pieceMovement class
-        if (hasLegalMove(getActivePlayer(), stepsDieResult)) {
+        // Integration with Hila's piece movement validation
+        if (hasLegalMove(getActivePlayer(), stepsDieResult, board, gameState, pieceMovement)) {
             System.out.println("Legal moves available. Waiting for player to move a piece.");
-            // The UI should now allow the player to select a piece.
-            // After the piece moves, finalizeTurn(stepsDieResult) must be called.
         } else {
-            System.out.println("No legal moves available.");
+            System.out.println("No legal moves available. Turn forfeited.");
             finalizeTurn(stepsDieResult);
         }
     }
 
-    // Called after a player successfully moves a piece OR if they had no legal moves
     public void finalizeTurn(int stepsDieResult) {
-        // Implement an additional roll when the Steps Die result is six (FR 8.5 & FR 8.9)
         if (stepsDieResult == 6 && consecutiveSixes < 3) {
             System.out.println("Rolled a 6! " + getActivePlayer().getName() + " gets another roll.");
             waitingForRoll = true;
@@ -67,23 +62,19 @@ public class TurnManager {
         }
     }
 
-    // Implement active player tracking and turn rotation for 2-4 players
     private void passTurn() {
         consecutiveSixes = 0;
         waitingForRoll = true;
         
-        // Loop to find the next eligible player (skipping completed players if implemented)
         do {
             currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
-        } while (getActivePlayer().hasFinishedGame()); // Assuming hasFinishedGame() exists in Player.java
+        } while (getActivePlayer().hasFinishedGame());
         
         System.out.println("Turn passed. Active player is now: " + getActivePlayer().getName());
-        // Trigger UI update here to display the active player
     }
 
-    // Placeholder for integration with Hila's pieceMovement logic
-    private boolean hasLegalMove(Player activePlayer, int diceResult) {
-        // TODO: Integrate with pieceMovement class to validate if any piece can move
-        return true; 
+    private boolean hasLegalMove(Player activePlayer, int diceResult, EasyBoard board, GameState gameState, PieceMovement pieceMovement) {
+        return gameState.getPieces().stream()
+                .anyMatch(piece -> pieceMovement.canMoveEasy(piece, activePlayer, diceResult, board, gameState));
     }
 }

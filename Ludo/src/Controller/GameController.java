@@ -19,90 +19,88 @@ public class GameController {
     private TurnManager turnManager;
     private DicePanel dicePanel; 
     private Integer pendingDiceResult;
+    
+    // FIX: Variables declared at the class level so the whole file can access them
+    private EasyBoard board;
+    private GameState gameState;
+    private PieceMovement pieceMovement;
 
-    // Restored: The constructor Main.java is looking for
     public GameController(GameSetupFrame setupFrame) {
         this.setupFrame = setupFrame;
         setupFrame.setOnStartGame(this::startGame);
     }
 
-    // Update startGame to link the frame, the controller, and the panel
-    private void startGame(GameConfiguration configuration) {
-        EasyBoard board = new EasyBoard(configuration);
+private void startGame(GameConfiguration configuration) {
+        this.board = new EasyBoard(configuration);
+        this.gameState = new GameState(configuration, board.getCastles());
+        this.pieceMovement = new PieceMovement();
         
-        // initialize the positions of all pieces
-        GameState gameState = new GameState(configuration, board.getCastles());
-        
-        // Handles piece movement rules.
-        PieceMovement pieceMovement = new PieceMovement();
-
-        // Pass 'this' (the controller) into the frame
         EasyBoardFrame boardFrame = new EasyBoardFrame(board, this);
         boardFrame.setGameState(gameState);
 
-        // Grab the real on-screen DicePanel so we can update its text later
         this.dicePanel = boardFrame.getDicePanel();
-
-        // Temporary player for initial movement testing.
-        // Will be replaced by turn management integration.
-        Player currentPlayer = configuration.getPlayers().get(0);
         
-        // Reset selection and dice result for the new game
+        // DELETED: Player currentPlayer = configuration.getPlayers().get(0);
         pendingDiceResult = null;
 
-        // Receive the dice result from DicePanel.
 		boardFrame.setOnDiceRolled(result -> {
 		    pendingDiceResult = result;
-		    // Check whether at least one piece has a legal move.
+            
+            // FIX 1: Fetch the current active player dynamically
+            Player activePlayer = turnManager.getActivePlayer();
+            
 		    boolean hasLegalMove = gameState.getPieces()
 		            .stream()
 		            .anyMatch(piece ->
 		                    pieceMovement.canMoveEasy(
 		                            piece,
-		                            currentPlayer,
+		                            activePlayer,
 		                            result,
 		                            board,
 		                            gameState
 		                    )
 		            );
 		
-		    // No legal move: discard this roll and unlock the die.
 		    if (!hasLegalMove) {
 		        pendingDiceResult = null;
 		        boardFrame.setDiceRollEnabled(true);
+                refreshActivePlayerUI(); // Update UI if the turn was auto-passed
 		    }
 		});
         
-        // Handle piece selection and attempt movement.
         boardFrame.setOnPieceSelected(piece -> {
-            // A piece cannot move before a dice roll.
             if (pendingDiceResult == null) {
                 return;
             }
 
-            // Attempt to move the selected piece.
+            // FIX 2: Fetch the current active player dynamically
+            Player activePlayer = turnManager.getActivePlayer();
+
             boolean moved = pieceMovement.movePieceEasy(
                 piece,
-                currentPlayer,
+                activePlayer,
                 pendingDiceResult,
                 board,
                 gameState
             );
 
             if (moved) {
-                // Consume the dice result after a valid move.
+                // Save the result before clearing it
+                int usedDiceResult = pendingDiceResult;
                 pendingDiceResult = null;
-                // Update the board display.
+                
                 boardFrame.refreshBoard();
-                // Allow the next dice roll
+                
+                // FIX 3: Tell the TurnManager the move is finished so it can rotate
+                turnManager.finalizeTurn(usedDiceResult);
+                refreshActivePlayerUI();
+                
                 boardFrame.setDiceRollEnabled(true);
             }
         });
         
-        // Close the board when Back is clicked
         boardFrame.setOnBackToMainMenu(boardFrame::dispose);
 
-        // Return to setup after closing the board
         boardFrame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosed(WindowEvent e) {
@@ -113,26 +111,21 @@ public class GameController {
         boardFrame.setVisible(true);
         setupFrame.setVisible(false);
         
-        // Start the turns
         initializeGame(configuration.getPlayers());
     }
     
-    // New: Sets up the turn rotation once the game starts
     public void initializeGame(List<Player> players) {
         this.turnManager = new TurnManager(players);
         refreshActivePlayerUI();
     }
 
-    // New: Handles the roll request from the DicePanel
     public void attemptDiceRoll(Player playerRequestingRoll) {
         if (turnManager != null && turnManager.canRollDice(playerRequestingRoll)) {
-            // Generate standard 1-6 roll
             int stepsResult = (int) (Math.random() * 6) + 1; 
             
-            // Process the roll in TurnManager
-            turnManager.handleDiceRoll(stepsResult);
+            // FIX: Only one handleDiceRoll call, passing the required arguments
+            turnManager.handleDiceRoll(stepsResult, board, gameState, pieceMovement);
             
-            // Push the new data to the DicePanel
             dicePanel.updateDiceResultDisplay(stepsResult);
             refreshActivePlayerUI();
             
@@ -141,7 +134,6 @@ public class GameController {
         }
     }
 
-    // New: Helper method to keep UI updates clean
     public void refreshActivePlayerUI() {
         if (dicePanel != null && turnManager != null) {
             String activePlayerName = turnManager.getActivePlayer().getName();
