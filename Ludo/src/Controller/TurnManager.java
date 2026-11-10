@@ -27,30 +27,23 @@ public class TurnManager {
         return waitingForRoll && player.equals(getActivePlayer());
     }
 
-    // Core turn logic called right after the Steps Die is rolled
-    public void handleDiceRoll(int stepsDieResult, EasyBoard board, GameState gameState, PieceMovement pieceMovement) {
-        if (!waitingForRoll) return;
+    // Process the dice result and check consecutive sixes
+    public boolean processDiceRoll(int stepsDieResult) {
+        if (!waitingForRoll) return false;
 
         if (stepsDieResult == 6) {
             consecutiveSixes++;
             if (consecutiveSixes == 3) {
                 System.out.println("Third consecutive six! Turn canceled.");
                 passTurn();
-                return;
+                return false; // Turn is forfeited
             }
         } else {
             consecutiveSixes = 0;
         }
 
         waitingForRoll = false;
-
-        // Integration with Hila's piece movement validation
-        if (hasLegalMove(getActivePlayer(), stepsDieResult, board, gameState, pieceMovement)) {
-            System.out.println("Legal moves available. Waiting for player to move a piece.");
-        } else {
-            System.out.println("No legal moves available. Turn forfeited.");
-            finalizeTurn(stepsDieResult);
-        }
+        return true; // Roll is valid, check for legal moves next
     }
 
     public void finalizeTurn(int stepsDieResult) {
@@ -62,7 +55,7 @@ public class TurnManager {
         }
     }
 
-    private void passTurn() {
+    public void passTurn() {
         consecutiveSixes = 0;
         waitingForRoll = true;
         
@@ -73,7 +66,7 @@ public class TurnManager {
         System.out.println("Turn passed. Active player is now: " + getActivePlayer().getName());
     }
 
-    private boolean hasLegalMove(Player activePlayer, int diceResult, EasyBoard board, GameState gameState, PieceMovement pieceMovement) {
+    public boolean hasLegalMove(Player activePlayer, int diceResult, EasyBoard board, GameState gameState, PieceMovement pieceMovement) {
         return gameState.getPieces().stream()
                 .anyMatch(piece -> pieceMovement.canMoveEasy(piece, activePlayer, diceResult, board, gameState));
     }
