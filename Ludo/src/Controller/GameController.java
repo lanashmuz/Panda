@@ -1,17 +1,17 @@
 package Controller;
 
-import Model.Player;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.util.List;
+
 import Model.EasyBoard;
 import Model.GameConfiguration;
 import Model.GameState;
 import Model.PieceMovement;
+import Model.Player;
+import View.DicePanel;
 import View.EasyBoardFrame;
 import View.GameSetupFrame;
-import View.DicePanel; 
-
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import java.util.List;
 
 public class GameController {
 

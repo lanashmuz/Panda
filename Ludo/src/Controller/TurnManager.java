@@ -1,10 +1,11 @@
 package Controller;
 
-import Model.Player;
+import java.util.List;
+
 import Model.EasyBoard;
 import Model.GameState;
 import Model.PieceMovement;
-import java.util.List;
+import Model.Player;
 
 public class TurnManager {
     private List<Player> players;

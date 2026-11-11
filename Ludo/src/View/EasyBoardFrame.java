@@ -1,19 +1,19 @@
 package View;
 
-import Controller.GameController;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
+import Controller.GameController;
 import Model.EasyBoard;
 import Model.GameState;
 import Model.Piece;
-import java.util.function.Consumer;
-import java.util.function.IntConsumer;
 
 public class EasyBoardFrame extends JFrame {
 
