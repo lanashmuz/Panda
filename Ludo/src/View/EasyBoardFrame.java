@@ -3,24 +3,26 @@ package View;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
+import Controller.GameController;
 import Model.EasyBoard;
 import Model.GameState;
 import Model.Piece;
-import java.util.function.Consumer;
-import java.util.function.IntConsumer;
 
 public class EasyBoardFrame extends JFrame {
 
     private Runnable onBackToMainMenu;
     private final EasyBoardPanel boardPanel;
-    private final DicePanel dicePanel;
+    private DicePanel dicePanel; 
 
-    public EasyBoardFrame(EasyBoard board) {
+    // Fixes: The constructor EasyBoardFrame(EasyBoard, GameController) is undefined
+    public EasyBoardFrame(EasyBoard board, GameController gameController) {
         setTitle("Panda - Easy Board");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
@@ -39,17 +41,18 @@ public class EasyBoardFrame extends JFrame {
 
         JPanel mainPanel = new JPanel(new BorderLayout());
         mainPanel.add(navigationPanel, BorderLayout.NORTH);
-
+        
         // create and display the game board
         boardPanel = new EasyBoardPanel(board);
         mainPanel.add(boardPanel, BorderLayout.CENTER);
-
-        // Display the dice controls below the board
-        dicePanel = new DicePanel();
-        mainPanel.add(dicePanel, BorderLayout.SOUTH);
-
+        
+        // Initialize the dice panel with the passed controller
+        this.dicePanel = new DicePanel(gameController); 
+        
+        // Add the dice panel to the bottom of the screen
+        mainPanel.add(this.dicePanel, BorderLayout.SOUTH);
+        
         setContentPane(mainPanel);
-
         pack();
         setMinimumSize(new Dimension(450, 450));
         setLocationRelativeTo(null);
@@ -59,10 +62,14 @@ public class EasyBoardFrame extends JFrame {
         this.onBackToMainMenu = onBackToMainMenu;
     }
     
+    // Allows the GameController to update the UI text
+    public DicePanel getDicePanel() {
+        return this.dicePanel;
+    }
+
     // connect the board panel to the current game state
     public void setGameState(GameState gameState) {
     	boardPanel.setGameState(gameState);
-    	
     }
 
     // passes piece selection events to the controller
@@ -83,7 +90,4 @@ public class EasyBoardFrame extends JFrame {
 	public void setDiceRollEnabled(boolean enabled) {
 	    dicePanel.setRollEnabled(enabled);
 	}
-
-
-
 }
