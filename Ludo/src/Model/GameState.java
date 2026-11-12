@@ -67,6 +67,10 @@ public class GameState {
 
     // stores the game configuration
     private final GameConfiguration configuration;
+    
+ // Stores the dice result awaiting a legal piece move.
+ // Null means no dice result is currently pending.
+ private Integer pendingDiceResult;
 
     // maps each piece to its current position
     private final Map<Piece, PiecePosition> piecePositions =
@@ -105,6 +109,27 @@ public class GameState {
     // returns the game configuration
     public GameConfiguration getConfiguration() {
         return configuration;
+    }
+    
+ // Returns the dice result waiting to be used for movement.
+    public Integer getPendingDiceResult() {
+        return pendingDiceResult;
+    }
+
+    // Stores a valid dice result for the next piece movement.
+    public void setPendingDiceResult(int result) {
+        if (result < 1 || result > 6) {
+            throw new IllegalArgumentException(
+                "Dice result must be between 1 and 6"
+            );
+        }
+
+        this.pendingDiceResult = result;
+    }
+
+    // Clears the pending dice result after the move or turn ends.
+    public void clearPendingDiceResult() {
+        this.pendingDiceResult = null;
     }
 
     // returns all pieces registered in the game

@@ -1,6 +1,7 @@
 package Controller;
 
 import java.awt.event.WindowAdapter;
+import Model.StepsDie;
 import java.awt.event.WindowEvent;
 import java.util.List;
 
@@ -18,11 +19,11 @@ public class GameController {
     private final GameSetupFrame setupFrame;
     private TurnManager turnManager;
     private DicePanel dicePanel; 
-    private Integer pendingDiceResult;
     
     private EasyBoard board;
     private GameState gameState;
     private PieceMovement pieceMovement;
+    private final StepsDie stepsDie = new StepsDie();
 
     public GameController(GameSetupFrame setupFrame) {
         this.setupFrame = setupFrame;
@@ -38,13 +39,13 @@ public class GameController {
         boardFrame.setGameState(gameState);
 
         this.dicePanel = boardFrame.getDicePanel();
-        pendingDiceResult = null;
+        gameState.clearPendingDiceResult();
 
         // Handle piece selection and attempt movement.
         boardFrame.setOnPieceSelected(piece -> {
-            if (pendingDiceResult == null) {
-                return;
-            }
+        	if (gameState.getPendingDiceResult() == null) {
+        	    return;
+        	}
 
             // Ensure the piece belongs to the active player trying to move
             Player activePlayer = turnManager.getActivePlayer();
@@ -52,14 +53,14 @@ public class GameController {
             boolean moved = pieceMovement.movePieceEasy(
                 piece,
                 activePlayer,
-                pendingDiceResult,
+                gameState.getPendingDiceResult(),
                 board,
                 gameState
             );
 
             if (moved) {
-                int usedDiceResult = pendingDiceResult;
-                pendingDiceResult = null;
+                int usedDiceResult = gameState.getPendingDiceResult();
+                gameState.clearPendingDiceResult();
                 
                 boardFrame.refreshBoard();
                 
@@ -94,14 +95,16 @@ public class GameController {
     public void attemptDiceRoll(Player playerRequestingRoll) {
         if (turnManager != null && turnManager.canRollDice(playerRequestingRoll)) {
             // Lock in the player who is rolling right now
-            Player rollingPlayer = turnManager.getActivePlayer();
-            
-            int stepsResult = (int) (Math.random() * 6) + 1; 
-            dicePanel.updateDiceResultDisplay(stepsResult);
+        	Player rollingPlayer = turnManager.getActivePlayer();
+        	// Generate the standard die result through the Model.
+        	int stepsResult = stepsDie.roll();
+
+        	dicePanel.updateDiceResultDisplay(stepsResult);
             
             // Process roll through TurnManager
             boolean isValidRoll = turnManager.processDiceRoll(stepsResult);
             if (!isValidRoll) {
+            	gameState.clearPendingDiceResult();
                 // Third consecutive six reached, turn passed automatically
                 refreshActivePlayerUI();
                 boardFrameSetDiceRollEnabled(true);
@@ -112,11 +115,13 @@ public class GameController {
             boolean hasLegalMove = turnManager.hasLegalMove(rollingPlayer, stepsResult, board, gameState, pieceMovement);
 
             if (hasLegalMove) {
-                pendingDiceResult = stepsResult;
+            	// Store the roll until the player completes a legal move.
+            	gameState.setPendingDiceResult(stepsResult);
+                gameState.setPendingDiceResult(stepsResult);
                 System.out.println(rollingPlayer.getName() + " has legal moves. Select a piece.");
             } else {
                 System.out.println(rollingPlayer.getName() + " has no legal moves for roll: " + stepsResult);
-                pendingDiceResult = null;
+                gameState.clearPendingDiceResult();
                 // No legal move: finalize turn (passes turn unless it's a valid 6 castle entry)
                 turnManager.finalizeTurn(stepsResult);
                 refreshActivePlayerUI();
