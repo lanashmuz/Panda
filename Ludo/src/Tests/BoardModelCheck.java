@@ -1,5 +1,13 @@
-package Model;
+package Tests;
 
+import Model.Castle;
+import Model.EasyBoard;
+import Model.GameConfiguration;
+import Model.HomePath;
+import Model.Piece;
+import Model.Player;
+import Model.Square;
+import Model.SquareType;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
