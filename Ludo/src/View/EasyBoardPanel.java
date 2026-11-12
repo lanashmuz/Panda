@@ -74,14 +74,6 @@ public class EasyBoardPanel extends JPanel {
        			 onPieceSelected.accept(selectedPiece);
    				}
 			}
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                Piece selectedPiece = findClickedPiece(e.getX(), e.getY());
-				System.out.println("Clicked; piece found: " + (selectedPiece != null));
-                if (selectedPiece != null && onPieceSelected != null) {
-                    onPieceSelected.accept(selectedPiece);
-                }
-            }
         });
 
         // changes the cursor when hovering over a piece
