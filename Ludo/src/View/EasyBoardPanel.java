@@ -63,10 +63,21 @@ public class EasyBoardPanel extends JPanel {
 
         // detects when a player clicks on a game piece
         addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+    			if (e.getButton() != MouseEvent.BUTTON1) {
+     		   return;
+   				}
+   				Piece selectedPiece = findClickedPiece(e.getX(), e.getY());
+
+   				if (selectedPiece != null && onPieceSelected != null) {
+       			 onPieceSelected.accept(selectedPiece);
+   				}
+			}
             @Override
             public void mouseClicked(MouseEvent e) {
                 Piece selectedPiece = findClickedPiece(e.getX(), e.getY());
-
+				System.out.println("Clicked; piece found: " + (selectedPiece != null));
                 if (selectedPiece != null && onPieceSelected != null) {
                     onPieceSelected.accept(selectedPiece);
                 }
