@@ -1,6 +1,7 @@
 package Controller;
 
 import java.awt.event.WindowAdapter;
+import Model.StepsDie;
 import java.awt.event.WindowEvent;
 import java.util.List;
 
@@ -23,6 +24,7 @@ public class GameController {
     private EasyBoard board;
     private GameState gameState;
     private PieceMovement pieceMovement;
+    private final StepsDie stepsDie = new StepsDie();
 
     public GameController(GameSetupFrame setupFrame) {
         this.setupFrame = setupFrame;
@@ -94,10 +96,11 @@ public class GameController {
     public void attemptDiceRoll(Player playerRequestingRoll) {
         if (turnManager != null && turnManager.canRollDice(playerRequestingRoll)) {
             // Lock in the player who is rolling right now
-            Player rollingPlayer = turnManager.getActivePlayer();
-            
-            int stepsResult = (int) (Math.random() * 6) + 1; 
-            dicePanel.updateDiceResultDisplay(stepsResult);
+        	Player rollingPlayer = turnManager.getActivePlayer();
+        	// Generate the standard die result through the Model.
+        	int stepsResult = stepsDie.roll();
+
+        	dicePanel.updateDiceResultDisplay(stepsResult);
             
             // Process roll through TurnManager
             boolean isValidRoll = turnManager.processDiceRoll(stepsResult);
