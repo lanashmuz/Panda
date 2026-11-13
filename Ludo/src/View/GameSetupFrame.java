@@ -26,6 +26,14 @@ import Model.GameConfiguration;
 
 import java.util.function.Consumer;
 
+import java.awt.Font;
+import javax.swing.SwingConstants;
+
+import java.awt.GridBagLayout;
+import java.awt.Dimension;
+import javax.swing.BorderFactory;
+import java.awt.Dimension;
+
 /**
  * Represents the game setup window. Allows players to configure the game before
  * starting.
@@ -36,19 +44,55 @@ public class GameSetupFrame extends JFrame {
 	private JPanel playerDetailsPanel;
 	private JLabel colorWarningLabel;
 	private Consumer<GameConfiguration> onStartGame;
-	private final List<JComboBox<String>> colorComboBoxes = new ArrayList<>(); // Store the color selection boxes for validation
-	private final List<JTextField> playerNameFields = new ArrayList<>(); // Store player name fields for creating player objects
+	private Runnable onBackToStart;
+	private final List<JComboBox<String>> colorComboBoxes = new ArrayList<>(); // Store the color selection boxes for
+																				// validation
+	private final List<JTextField> playerNameFields = new ArrayList<>(); // Store player name fields for creating player
+																			// objects
 
 	// Creates and configures the game setup window.
 	public GameSetupFrame() {
 		setTitle("Panda Ludo - Game Setup");
-		setSize(600, 450);
+		setSize(650, 500);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setLocationRelativeTo(null);
 
 		// Create the main panel with spacing
 		JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
 		mainPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+
+		// Game setup title
+		JLabel titleLabel = new JLabel("GAME SETUP", SwingConstants.CENTER);
+
+		titleLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 26));
+
+		// Create the back button
+		JButton backButton = new JButton("← Back to Main Menu");
+		backButton.setPreferredSize(new Dimension(210, 40));
+
+		backButton.addActionListener(e -> {
+			if (onBackToStart != null) {
+				onBackToStart.run();
+			}
+		});
+
+
+		 // Create the header panel
+		JPanel headerPanel = new JPanel(new BorderLayout(0, 12));
+
+		// Back button at the top-left
+		JPanel navigationPanel = new JPanel(
+		        new FlowLayout(FlowLayout.LEFT, 0, 0)
+		);
+		navigationPanel.add(backButton);
+
+		headerPanel.add(navigationPanel, BorderLayout.NORTH);
+
+		// Center the title below the back button
+		headerPanel.add(titleLabel, BorderLayout.CENTER);
+
+		mainPanel.add(headerPanel, BorderLayout.NORTH);
+
 
 		// Add a selection box for choosing 2 to 4 players
 		JPanel playerCountPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
@@ -93,7 +137,15 @@ public class GameSetupFrame extends JFrame {
 
 		setupPanel.add(difficultyPanel, BorderLayout.SOUTH);
 
-		mainPanel.add(setupPanel, BorderLayout.NORTH);
+		// Group the game settings inside a bordered section
+		setupPanel.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createTitledBorder("GAME OPTIONS"),
+				BorderFactory.createEmptyBorder(18, 18, 18, 18)));
+
+		// Center the setup section
+		JPanel setupContainer = new JPanel(new GridBagLayout());
+		setupContainer.add(setupPanel);
+
+		mainPanel.add(setupContainer, BorderLayout.CENTER);
 
 		// Display color validation messages
 		colorWarningLabel = new JLabel("");
@@ -104,9 +156,19 @@ public class GameSetupFrame extends JFrame {
 		bottomPanel.add(colorWarningLabel, BorderLayout.NORTH);
 
 		JButton startButton = new JButton("Start Game");
+
+		startButton.setPreferredSize(new Dimension(260, 45));
+		startButton.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
+
 		startButton.addActionListener(e -> handleStartGame());
 
-		bottomPanel.add(startButton, BorderLayout.SOUTH);
+		// Center the Start Game button
+		JPanel startButtonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+
+		startButtonPanel.add(startButton);
+
+		bottomPanel.add(startButtonPanel, BorderLayout.SOUTH);
+
 		mainPanel.add(bottomPanel, BorderLayout.SOUTH);
 		// Update the name fields when the player count changes
 		playerCountComboBox.addActionListener(e -> updatePlayerNameFields());
@@ -261,5 +323,9 @@ public class GameSetupFrame extends JFrame {
 
 	public void setOnStartGame(Consumer<GameConfiguration> onStartGame) {
 		this.onStartGame = onStartGame;
+	}
+
+	public void setOnBackToStart(Runnable onBackToStart) {
+		this.onBackToStart = onBackToStart;
 	}
 }

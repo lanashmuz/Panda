@@ -18,6 +18,10 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.BorderFactory;
 
+import java.awt.Color;
+import java.awt.Font;
+import javax.swing.SwingConstants;
+
 public class DicePanel extends JPanel {
 
 	private JButton rollButton;
@@ -35,8 +39,33 @@ public class DicePanel extends JPanel {
 
 		// 2. Initialize UI components
 		activePlayerLabel = new JLabel("Active Player: Waiting for game to start...");
-		diceResultLabel = new JLabel("Roll Result: -");
+		JLabel diceTitleLabel = new JLabel("ROLL RESULT");
+		diceResultLabel = new JLabel("-");
 		rollButton = new JButton("Roll Dice");
+		
+
+		// Make the active player easier to read
+		activePlayerLabel.setFont(
+		        new Font(Font.SANS_SERIF, Font.BOLD, 15)
+		);
+
+		// Style the dice title
+		diceTitleLabel.setFont(
+		        new Font(Font.SANS_SERIF, Font.BOLD, 12)
+		);
+		diceTitleLabel.setForeground(new Color(90, 100, 115));
+
+		// Highlight the dice result
+		diceResultLabel.setFont(
+		        new Font(Font.SANS_SERIF, Font.BOLD, 40)
+		);
+		diceResultLabel.setHorizontalAlignment(SwingConstants.CENTER);
+		diceResultLabel.setOpaque(true);
+		diceResultLabel.setBackground(new Color(240, 244, 248));
+		diceResultLabel.setBorder(
+		        BorderFactory.createEmptyBorder(12, 12, 12, 12)
+		);
+
 
 		// 3. Update the Action Listener to handle both Turn Logic and Hila's validation
 		rollButton.addActionListener(new ActionListener() {
@@ -54,10 +83,33 @@ public class DicePanel extends JPanel {
 		});
 
 
-		// Align components to the left
+
+		// Align sidebar components
 		activePlayerLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+		diceTitleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		diceResultLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		rollButton.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+		// Make dice result and button fill available width
+		diceResultLabel.setMaximumSize(
+		        new Dimension(Integer.MAX_VALUE, 86)
+		);
+
+		rollButton.setMaximumSize(
+		        new Dimension(Integer.MAX_VALUE, 40)
+		);
+
+		// Arrange components vertically
+		add(activePlayerLabel);
+		add(Box.createVerticalStrut(18));
+
+		add(diceTitleLabel);
+		add(Box.createVerticalStrut(6));
+		add(diceResultLabel);
+		add(Box.createVerticalStrut(14));
+
+		add(rollButton);
+
 
 		// Set a consistent button height
 		rollButton.setMaximumSize(
@@ -81,7 +133,7 @@ public class DicePanel extends JPanel {
 	}
 
 	public void updateDiceResultDisplay(int result) {
-		diceResultLabel.setText("Roll Result: " + result);
+		diceResultLabel.setText(String.valueOf(result));
 
 		// Pass the result to Hila's movement validation logic
 		if (onRoll != null) {

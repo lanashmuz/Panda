@@ -9,6 +9,9 @@ import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
+import java.awt.Font;
+import java.awt.Insets;
+
 public class GameFrame extends JFrame {
 
     private Runnable onBackToMainMenu;
@@ -23,8 +26,15 @@ public class GameFrame extends JFrame {
             BorderFactory.createEmptyBorder(15, 15, 15, 15)
         );
 
-        // Back to main menu button
-        JButton backButton = new JButton("Back to Main Menu");
+        // Back to game setup button
+        JButton backButton = new JButton("← Back to Game Setup");
+
+        backButton.setPreferredSize(new Dimension(215, 42));
+        backButton.setFont(
+                new Font(Font.SANS_SERIF, Font.BOLD, 14)
+        );
+        backButton.setMargin(new Insets(8, 14, 8, 14));
+        
         backButton.addActionListener(e -> {
             if (onBackToMainMenu != null) {
                 onBackToMainMenu.run();
