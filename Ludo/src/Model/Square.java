@@ -24,4 +24,3 @@ public class Square {
         return playerColor;
     }
 }
-

@@ -16,138 +16,133 @@ import View.GameSetupFrame;
 
 public class GameController {
 
-    private final GameSetupFrame setupFrame;
-    private TurnManager turnManager;
-    private DicePanel dicePanel; 
-    
-    private EasyBoard board;
-    private GameState gameState;
-    private PieceMovement pieceMovement;
-    private final StepsDie stepsDie = new StepsDie();
+	private final GameSetupFrame setupFrame;
+	private TurnManager turnManager;
+	private DicePanel dicePanel;
+	private EasyBoard board;
+	private GameState gameState;
+	private PieceMovement pieceMovement;
+	private final StepsDie stepsDie = new StepsDie();
 
-    public GameController(GameSetupFrame setupFrame) {
-        this.setupFrame = setupFrame;
-        setupFrame.setOnStartGame(this::startGame);
-    }
+	public GameController(GameSetupFrame setupFrame) {
+		this.setupFrame = setupFrame;
+		setupFrame.setOnStartGame(this::startGame);
+	}
 
-    private void startGame(GameConfiguration configuration) {
-        this.board = new EasyBoard(configuration);
-        this.gameState = new GameState(configuration, board.getCastles());
-        this.pieceMovement = new PieceMovement();
-        
-        EasyBoardFrame boardFrame = new EasyBoardFrame(board, this);
-        boardFrame.setGameState(gameState);
+	private void startGame(GameConfiguration configuration) {
+		this.board = new EasyBoard(configuration);
+		this.gameState = new GameState(configuration, board.getCastles());
+		this.pieceMovement = new PieceMovement();
 
-        this.dicePanel = boardFrame.getDicePanel();
-        gameState.clearPendingDiceResult();
+		EasyBoardFrame boardFrame = new EasyBoardFrame(board, this);
+		boardFrame.setGameState(gameState);
 
-        // Handle piece selection and attempt movement.
-        boardFrame.setOnPieceSelected(piece -> {
-        	if (gameState.getPendingDiceResult() == null) {
-        	    return;
-        	}
+		this.dicePanel = boardFrame.getDicePanel();
+		gameState.clearPendingDiceResult();
 
-            // Ensure the piece belongs to the active player trying to move
-            Player activePlayer = turnManager.getActivePlayer();
+		// Handle piece selection and attempt movement.
+		boardFrame.setOnPieceSelected(piece -> {
+			if (gameState.getPendingDiceResult() == null) {
+				return;
+			}
 
-            boolean moved = pieceMovement.movePieceEasy(
-                piece,
-                activePlayer,
-                gameState.getPendingDiceResult(),
-                board,
-                gameState
-            );
+			// Ensure the piece belongs to the active player trying to move
+			Player activePlayer = turnManager.getActivePlayer();
 
-            if (moved) {
-                int usedDiceResult = gameState.getPendingDiceResult();
-                gameState.clearPendingDiceResult();
-                
-                boardFrame.refreshBoard();
-                
-                // Finalize turn (grants extra roll on 6 or passes to next player)
-                turnManager.finalizeTurn(usedDiceResult);
-                refreshActivePlayerUI();
-                
-                boardFrame.setDiceRollEnabled(true);
-            }
-        });
-        
-        boardFrame.setOnBackToMainMenu(boardFrame::dispose);
+			boolean moved = pieceMovement.movePieceEasy(piece, activePlayer, gameState.getPendingDiceResult(), board,
+					gameState);
 
-        boardFrame.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosed(WindowEvent e) {
-                setupFrame.setVisible(true);
-            }
-        });
+			if (moved) {
+				int usedDiceResult = gameState.getPendingDiceResult();
+				gameState.clearPendingDiceResult();
 
-        boardFrame.setVisible(true);
-        setupFrame.setVisible(false);
-        
-        initializeGame(configuration.getPlayers());
-    }
-    
-    public void initializeGame(List<Player> players) {
-        this.turnManager = new TurnManager(players);
-        refreshActivePlayerUI();
-    }
+				boardFrame.refreshBoard();
 
-    public void attemptDiceRoll(Player playerRequestingRoll) {
-        if (turnManager != null && turnManager.canRollDice(playerRequestingRoll)) {
-            // Lock in the player who is rolling right now
-        	Player rollingPlayer = turnManager.getActivePlayer();
-        	// Generate the standard die result through the Model.
-        	int stepsResult = stepsDie.roll();
+				// Finalize turn (grants extra roll on 6 or passes to next player)
+				turnManager.finalizeTurn(usedDiceResult);
+				refreshActivePlayerUI();
 
-        	dicePanel.updateDiceResultDisplay(stepsResult);
-            
-            // Process roll through TurnManager
-            boolean isValidRoll = turnManager.processDiceRoll(stepsResult);
-            if (!isValidRoll) {
-            	gameState.clearPendingDiceResult();
-                // Third consecutive six reached, turn passed automatically
-                refreshActivePlayerUI();
-                boardFrameSetDiceRollEnabled(true);
-                return;
-            }
+				boardFrame.setDiceRollEnabled(true);
+			}
+		});
 
-            // Check if this specific player has any legal moves with this roll result
-            boolean hasLegalMove = turnManager.hasLegalMove(rollingPlayer, stepsResult, board, gameState, pieceMovement);
+		boardFrame.setOnBackToMainMenu(boardFrame::dispose);
 
-            if (hasLegalMove) {
-            	// Store the roll until the player completes a legal move.
-            	gameState.setPendingDiceResult(stepsResult);
-                gameState.setPendingDiceResult(stepsResult);
-                System.out.println(rollingPlayer.getName() + " has legal moves. Select a piece.");
-            } else {
-                System.out.println(rollingPlayer.getName() + " has no legal moves for roll: " + stepsResult);
-                gameState.clearPendingDiceResult();
-                // No legal move: finalize turn (passes turn unless it's a valid 6 castle entry)
-                turnManager.finalizeTurn(stepsResult);
-                refreshActivePlayerUI();
-                boardFrameSetDiceRollEnabled(true);
-            }
-            
-        } else {
-            System.out.println("It is not " + playerRequestingRoll.getName() + "'s turn to roll.");
-        }
-    }
-    
-    // Helper to safely re-enable dice from controller if needed
-    private void boardFrameSetDiceRollEnabled(boolean enabled) {
-        if (dicePanel != null) {
-            dicePanel.setRollEnabled(enabled);
-        }
-    }
+		boardFrame.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosed(WindowEvent e) {
+				setupFrame.setVisible(true);
+			}
+		});
 
-    public void refreshActivePlayerUI() {
-        if (dicePanel != null && turnManager != null) {
-            String activePlayerName = turnManager.getActivePlayer().getName();
-            dicePanel.updateActivePlayerDisplay(activePlayerName);
-        }
-    }
+		boardFrame.setVisible(true);
+		setupFrame.setVisible(false);
 
-    public TurnManager getTurnManager() {
-        return turnManager;
-    }
+		initializeGame(configuration.getPlayers());
+	}
+
+	public void initializeGame(List<Player> players) {
+		this.turnManager = new TurnManager(players);
+		refreshActivePlayerUI();
+	}
+
+	public void attemptDiceRoll(Player playerRequestingRoll) {
+		if (turnManager != null && turnManager.canRollDice(playerRequestingRoll)) {
+			// Lock in the player who is rolling right now
+			Player rollingPlayer = turnManager.getActivePlayer();
+			// Generate the standard die result through the Model.
+			int stepsResult = stepsDie.roll();
+
+			dicePanel.updateDiceResultDisplay(stepsResult);
+
+			// Process roll through TurnManager
+			boolean isValidRoll = turnManager.processDiceRoll(stepsResult);
+			if (!isValidRoll) {
+				gameState.clearPendingDiceResult();
+				// Third consecutive six reached, turn passed automatically
+				refreshActivePlayerUI();
+				boardFrameSetDiceRollEnabled(true);
+				return;
+			}
+
+			// Check if this specific player has any legal moves with this roll result
+			boolean hasLegalMove = turnManager.hasLegalMove(rollingPlayer, stepsResult, board, gameState,
+					pieceMovement);
+
+			if (hasLegalMove) {
+				// Store the roll until the player completes a legal move.
+				gameState.setPendingDiceResult(stepsResult);
+				gameState.setPendingDiceResult(stepsResult);
+				System.out.println(rollingPlayer.getName() + " has legal moves. Select a piece.");
+			} else {
+				System.out.println(rollingPlayer.getName() + " has no legal moves for roll: " + stepsResult);
+				gameState.clearPendingDiceResult();
+				// No legal move: finalize turn (passes turn unless it's a valid 6 castle entry)
+				turnManager.finalizeTurn(stepsResult);
+				refreshActivePlayerUI();
+				boardFrameSetDiceRollEnabled(true);
+			}
+
+		} else {
+			System.out.println("It is not " + playerRequestingRoll.getName() + "'s turn to roll.");
+		}
+	}
+
+	// Helper to safely re-enable dice from controller if needed
+	private void boardFrameSetDiceRollEnabled(boolean enabled) {
+		if (dicePanel != null) {
+			dicePanel.setRollEnabled(enabled);
+		}
+	}
+
+	public void refreshActivePlayerUI() {
+		if (dicePanel != null && turnManager != null) {
+			String activePlayerName = turnManager.getActivePlayer().getName();
+			dicePanel.updateActivePlayerDisplay(activePlayerName);
+		}
+	}
+
+	public TurnManager getTurnManager() {
+		return turnManager;
+	}
 }
