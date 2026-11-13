@@ -2,9 +2,11 @@ package Model;
 
 // Represents a player with a name and selected color
 public class Player {
+	
 	private String name;
 	private String color;
-	
+	private boolean finishedGame = false;
+
 	// Creates a player with a name and color
 	public Player(String name, String color) {
 		this.name = name;
@@ -23,14 +25,12 @@ public class Player {
 	public String toString() {
 		return "Player [name=" + name + ", color=" + color + "]";
 	}
-	// Inside Player.java
-	private boolean finishedGame = false;
 
 	public boolean hasFinishedGame() {
-	    return finishedGame;
+		return finishedGame;
 	}
 
 	public void setFinishedGame(boolean finishedGame) {
-	    this.finishedGame = finishedGame;
+		this.finishedGame = finishedGame;
 	}
 }

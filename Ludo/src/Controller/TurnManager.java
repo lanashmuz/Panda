@@ -8,6 +8,7 @@ import Model.PieceMovement;
 import Model.Player;
 
 public class TurnManager {
+	
     private List<Player> players;
     private int currentPlayerIndex;
     private int consecutiveSixes;

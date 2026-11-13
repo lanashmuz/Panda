@@ -62,7 +62,6 @@ public class EasyBoard {
         return homePaths;
     }
 
-
     private void placeSafeSquares(List<Square> squares) {
         List<Integer> eligibleIndices = new ArrayList<>();
     

@@ -7,10 +7,10 @@ import java.util.List;
 public class Castle {
 
     public static final int PIECES_PER_PLAYER = 4;
-
     private final String playerColor;
     private final List<Piece> pieces = new ArrayList<>();
 
+    
     public Castle(String playerColor) {
         this.playerColor = playerColor;
 
