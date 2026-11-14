@@ -15,7 +15,9 @@ import View.GameSetupFrame;
 import View.EasyBoardPanel;
 import View.GameFrame;
 import View.GameSidebarPanel;
-
+import Model.GameTimer;
+import javax.swing.JFrame;
+import View.ExitConfirmation;
 public class GameController {
 
 	private final GameSetupFrame setupFrame;
@@ -25,6 +27,7 @@ public class GameController {
 	private EasyBoard board;
 	private GameState gameState;
 	private PieceMovement pieceMovement;
+	private GameTimer gameTimer;
 	private final StepsDie stepsDie = new StepsDie();
 
 	public GameController(GameSetupFrame setupFrame) {
@@ -33,6 +36,9 @@ public class GameController {
 	}
 
 	private void startGame(GameConfiguration configuration) {
+		// Each new game has its own timer.
+		this.gameTimer = new GameTimer();
+
 		this.board = new EasyBoard(configuration);
 		this.gameState = new GameState(configuration, board.getCastles());
 		this.pieceMovement = new PieceMovement();
@@ -45,12 +51,19 @@ public class GameController {
 		this.dicePanel = new DicePanel(this);
 
 		// Create the sidebar with player information and dice
-		this.sidebarPanel =
-		        new GameSidebarPanel(configuration.getPlayers(), dicePanel);
+		this.sidebarPanel = new GameSidebarPanel(configuration.getPlayers(), dicePanel);
 
 		// Create the general game window
 		GameFrame gameFrame = new GameFrame(boardPanel, sidebarPanel);
 		
+		// Let the controller handle exit confirmation.
+		gameFrame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+		
+		// Refresh the clock display every second.
+		// GameTimer measures the actual duration independently.
+		javax.swing.Timer clockRefresh = new javax.swing.Timer(1000,
+		        e -> gameFrame.updateElapsedTime(gameTimer.getElapsedSeconds()));
+
 		gameState.clearPendingDiceResult();
 
 		// Handle piece selection and attempt movement.
@@ -74,43 +87,53 @@ public class GameController {
 				// Finalize turn (grants extra roll on 6 or passes to next player)
 				turnManager.finalizeTurn(usedDiceResult);
 				refreshActivePlayerUI();
-				
 
 				// Update game status after a successful move
 				if (usedDiceResult == 6) {
-				    sidebarPanel.updateStatus(
-				            activePlayer.getName() + " rolled 6! Roll again."
-				    );
+					sidebarPanel.updateStatus(activePlayer.getName() + " rolled 6! Roll again.");
 				} else {
-				    sidebarPanel.updateStatus(
-				            activePlayer.getName() + " moved a piece. "
-				            + turnManager.getActivePlayer().getName()
-				            + "'s turn."
-				    );
+					sidebarPanel.updateStatus(activePlayer.getName() + " moved a piece. "
+							+ turnManager.getActivePlayer().getName() + "'s turn.");
 				}
 
-				
-				dicePanel.setRollEnabled(true);			}
-		});
-
-		gameFrame.setOnBackToMainMenu(gameFrame::dispose);
-		
-		gameFrame.addWindowListener(new WindowAdapter() {
-			@Override
-			public void windowClosed(WindowEvent e) {
-				setupFrame.setVisible(true);
+				dicePanel.setRollEnabled(true);
 			}
 		});
 
+		gameFrame.setOnBackToMainMenu(gameFrame::dispose);
+
+		gameFrame.addWindowListener(new WindowAdapter() {
+
+		    @Override
+		    public void windowClosing(WindowEvent e) {
+		        // Confirm before exiting an active game.
+		        if (ExitConfirmation.confirmExit(gameFrame, true)) {
+		            clockRefresh.stop();
+		            gameTimer.stop();
+		            System.exit(0);
+		        }
+		    }
+
+		    @Override
+		    public void windowClosed(WindowEvent e) {
+		        // The Back button disposes the frame and returns to Game Setup.
+		        clockRefresh.stop();
+		        gameTimer.stop();
+		        setupFrame.setVisible(true);
+		    }
+		});
+
 		initializeGame(configuration.getPlayers());
-		
-		sidebarPanel.updateStatus(
-		        "Game started! "
-		        + turnManager.getActivePlayer().getName()
-		        + ", roll the dice."
-		);
+
+		sidebarPanel.updateStatus("Game started! " + turnManager.getActivePlayer().getName() + ", roll the dice.");
 
 		setupFrame.setVisible(false);
+
+		// Start the game timer and its visual refresh.
+		gameTimer.start();
+		gameFrame.updateElapsedTime(0);
+		clockRefresh.start();
+
 		gameFrame.setVisible(true);
 	}
 
@@ -134,12 +157,8 @@ public class GameController {
 				gameState.clearPendingDiceResult();
 				// Third consecutive six reached, turn passed automatically
 				refreshActivePlayerUI();
-				sidebarPanel.updateStatus(
-				        rollingPlayer.getName()
-				        + " rolled three 6s! Turn lost. "
-				        + turnManager.getActivePlayer().getName()
-				        + "'s turn."
-				);
+				sidebarPanel.updateStatus(rollingPlayer.getName() + " rolled three 6s! Turn lost. "
+						+ turnManager.getActivePlayer().getName() + "'s turn.");
 				boardFrameSetDiceRollEnabled(true);
 				return;
 			}
@@ -151,11 +170,8 @@ public class GameController {
 			if (hasLegalMove) {
 				// Store the roll until the player completes a legal move.
 				gameState.setPendingDiceResult(stepsResult);
-				sidebarPanel.updateStatus(
-				        rollingPlayer.getName()
-				        + " rolled " + stepsResult
-				        + ". Select a piece to move."
-				);
+				sidebarPanel
+						.updateStatus(rollingPlayer.getName() + " rolled " + stepsResult + ". Select a piece to move.");
 				System.out.println(rollingPlayer.getName() + " has legal moves. Select a piece.");
 			} else {
 				System.out.println(rollingPlayer.getName() + " has no legal moves for roll: " + stepsResult);
@@ -166,17 +182,10 @@ public class GameController {
 
 				// Show the consequence of having no legal move
 				if (stepsResult == 6) {
-				    sidebarPanel.updateStatus(
-				            rollingPlayer.getName()
-				            + " has no legal move. Roll again!"
-				    );
+					sidebarPanel.updateStatus(rollingPlayer.getName() + " has no legal move. Roll again!");
 				} else {
-				    sidebarPanel.updateStatus(
-				            rollingPlayer.getName()
-				            + " has no legal move. "
-				            + turnManager.getActivePlayer().getName()
-				            + "'s turn."
-				    );
+					sidebarPanel.updateStatus(rollingPlayer.getName() + " has no legal move. "
+							+ turnManager.getActivePlayer().getName() + "'s turn.");
 				}
 
 				boardFrameSetDiceRollEnabled(true);
@@ -194,24 +203,22 @@ public class GameController {
 		}
 	}
 
+	public void refreshActivePlayerUI() {
 
-public void refreshActivePlayerUI() {
+		if (turnManager == null) {
+			return;
+		}
 
-    if (turnManager == null) {
-        return;
-    }
+		Player activePlayer = turnManager.getActivePlayer();
 
-    Player activePlayer = turnManager.getActivePlayer();
+		if (dicePanel != null) {
+			dicePanel.updateActivePlayerDisplay(activePlayer.getName());
+		}
 
-    if (dicePanel != null) {
-        dicePanel.updateActivePlayerDisplay(activePlayer.getName());
-    }
-
-    if (sidebarPanel != null) {
-        sidebarPanel.updateActivePlayer(activePlayer);
-    }
-}
-
+		if (sidebarPanel != null) {
+			sidebarPanel.updateActivePlayer(activePlayer);
+		}
+	}
 
 	public TurnManager getTurnManager() {
 		return turnManager;

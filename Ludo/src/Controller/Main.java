@@ -6,6 +6,7 @@ import View.StartScreenFrame;
 import javax.swing.JFrame;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import View.ExitConfirmation;
 
 public class Main {
 
@@ -37,19 +38,29 @@ public class Main {
 			// Handle the Back to Main Menu button
 			setupFrame.setOnBackToStart(showStartScreen);
 
-			// Return to the start screen when game setup is closed
-			setupFrame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-
-			setupFrame.addWindowListener(new WindowAdapter() {
-				@Override
-				public void windowClosing(WindowEvent e) {
-					showStartScreen.run();
-				}
-			});
+			// Require confirmation before exiting from either screen.
+			installExitConfirmation(startFrame);
+			installExitConfirmation(setupFrame);
 
 			// Display the start screen first
 			startFrame.setVisible(true);
 		});
 
+	}
+	
+	/**
+	 * Configures a window to request confirmation before closing the application.
+	 */
+	private static void installExitConfirmation(JFrame frame) {
+	    frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+
+	    frame.addWindowListener(new WindowAdapter() {
+	        @Override
+	        public void windowClosing(WindowEvent e) {
+	            if (ExitConfirmation.confirmExit(frame, false)) {
+	                System.exit(0);
+	            }
+	        }
+	    });
 	}
 }

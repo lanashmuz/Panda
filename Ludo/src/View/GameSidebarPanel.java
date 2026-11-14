@@ -38,8 +38,8 @@ public class GameSidebarPanel extends JPanel {
         Section diceSection = new Section("CURRENT TURN & DICE", "");
         diceSection.addContent(dicePanel);
         add(diceSection);
-        add(Box.createVerticalStrut(12));
-
+        add(Box.createVerticalStrut(8));
+        
         Section playerSection = new Section("PLAYERS", "");
         JPanel list = new JPanel();
         list.setOpaque(false);
@@ -48,12 +48,12 @@ public class GameSidebarPanel extends JPanel {
             PlayerRow row = new PlayerRow(player);
             playerRows.put(player, row);
             list.add(row);
-            list.add(Box.createVerticalStrut(7));
+            list.add(Box.createVerticalStrut(3));
         }
         playerSection.addContent(list);
         add(playerSection);
-        add(Box.createVerticalStrut(12));
-
+        add(Box.createVerticalStrut(8));
+        
         Section statusSection = new Section("GAME STATUS", "");
         JPanel statusContent = new JPanel(new BorderLayout());
         statusContent.setOpaque(false);
@@ -100,16 +100,16 @@ public class GameSidebarPanel extends JPanel {
         Section(String name, String symbol) {
             setOpaque(false);
             setLayout(new BorderLayout());
-            setBorder(BorderFactory.createEmptyBorder(7, 10, 12, 10));
+            setBorder(BorderFactory.createEmptyBorder(3, 8, 5, 8));
             JLabel heading = new HeaderPill(name);
             heading.setForeground(Color.WHITE);
             heading.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 17));
             heading.setHorizontalAlignment(SwingConstants.CENTER);
-            heading.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+            heading.setBorder(BorderFactory.createEmptyBorder(5, 8, 5, 8));
             add(heading, BorderLayout.NORTH);
             body = new JPanel(new BorderLayout());
             body.setOpaque(false);
-            body.setBorder(BorderFactory.createEmptyBorder(9, 3, 0, 3));
+            body.setBorder(BorderFactory.createEmptyBorder(4, 3, 0, 3));
             add(body, BorderLayout.CENTER);
             setMaximumSize(new Dimension(Integer.MAX_VALUE, Integer.MAX_VALUE));
         }
@@ -160,9 +160,9 @@ public class GameSidebarPanel extends JPanel {
             this.player = player;
             setOpaque(false);
             setLayout(new BorderLayout(11, 0));
-            setPreferredSize(new Dimension(280, 43));
-            setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
-            setBorder(BorderFactory.createEmptyBorder(7, 18, 7, 15));
+            setPreferredSize(new Dimension(280, 38));
+            setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+            setBorder(BorderFactory.createEmptyBorder(4, 18, 4, 15));
             JLabel coloredDot = new JLabel("\u25cf");
             coloredDot.setForeground(playerColor(player.getColor()));
             coloredDot.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 24));
