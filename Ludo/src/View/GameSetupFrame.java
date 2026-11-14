@@ -75,8 +75,9 @@ public class GameSetupFrame extends JFrame {
 
         setContentPane(new SetupPanel());
         pack();
-        setMinimumSize(new Dimension(1050, 610));
+        setMinimumSize(new Dimension(800, 500));
         setLocationRelativeTo(null);
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
 
     /** Called by GameController; do not change its signature. */

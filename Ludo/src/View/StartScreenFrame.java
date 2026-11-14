@@ -48,8 +48,9 @@ public class StartScreenFrame extends JFrame {
         setContentPane(menu);
 
         pack();
-        setMinimumSize(new Dimension(840, 565));
+        setMinimumSize(new Dimension(800, 520));
         setLocationRelativeTo(null);
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
 
     // Called by Main.java when the game starts
