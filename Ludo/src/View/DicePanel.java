@@ -1,153 +1,155 @@
 package View;
 
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GradientPaint;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.RenderingHints;
 import java.util.function.IntConsumer;
 
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingConstants;
 
 import Controller.GameController;
 import Model.Player;
 
-import java.awt.Component;
-import java.awt.Dimension;
-
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.BorderFactory;
-
-import java.awt.Color;
-import java.awt.Font;
-import javax.swing.SwingConstants;
-
+/** Visual refresh; keeps dice-roll rules in GameController. */
 public class DicePanel extends JPanel {
+    private static final long serialVersionUID = 1L;
+    private final JButton rollButton;
+    private final JLabel activePlayerLabel;
+    private final JLabel diceResultLabel;
+    private final GameController gameController;
+    private IntConsumer onRoll;
 
-	private JButton rollButton;
-	private JLabel activePlayerLabel;
-	private JLabel diceResultLabel;
-	private GameController gameController;
-	private IntConsumer onRoll;
+    public DicePanel(GameController controller) {
+        this.gameController = controller;
+        setOpaque(false);
+        setLayout(new GridBagLayout());
+        setBorder(BorderFactory.createEmptyBorder(5, 7, 10, 7));
 
-	// 1. Pass GameController into the constructor
-	public DicePanel(GameController gameController) {
-		this.gameController = gameController;
-		// Arrange dice controls vertically
-		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-		setBorder(BorderFactory.createEmptyBorder(5, 0, 5, 0));
+        activePlayerLabel = new JLabel("Active Player: Waiting...", SwingConstants.CENTER);
+        activePlayerLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 18));
+        activePlayerLabel.setForeground(new Color(26, 58, 113));
 
-		// 2. Initialize UI components
-		activePlayerLabel = new JLabel("Active Player: Waiting for game to start...");
-		JLabel diceTitleLabel = new JLabel("ROLL RESULT");
-		diceResultLabel = new JLabel("-");
-		rollButton = new JButton("Roll Dice");
-		
+        JLabel title = new JLabel("ROLL RESULT", SwingConstants.CENTER);
+        title.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 13));
+        title.setForeground(new Color(72, 111, 158));
 
-		// Make the active player easier to read
-		activePlayerLabel.setFont(
-		        new Font(Font.SANS_SERIF, Font.BOLD, 15)
-		);
+        diceResultLabel = new JLabel("-", SwingConstants.CENTER);
+        diceResultLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 47));
+        diceResultLabel.setForeground(new Color(31, 61, 107));
+        JPanel diceBox = new RoundedDiceBox();
+        diceBox.setLayout(new java.awt.BorderLayout());
+        diceBox.add(diceResultLabel);
+        diceBox.setPreferredSize(new Dimension(118, 79));
 
-		// Style the dice title
-		diceTitleLabel.setFont(
-		        new Font(Font.SANS_SERIF, Font.BOLD, 12)
-		);
-		diceTitleLabel.setForeground(new Color(90, 100, 115));
+        rollButton = new BlueRollButton();
+        rollButton.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 21));
+        rollButton.setPreferredSize(new Dimension(285, 58));
+        rollButton.addActionListener(e -> {
+            if (gameController == null || gameController.getTurnManager() == null) return;
+            rollButton.setEnabled(false);
+            Player current = gameController.getTurnManager().getActivePlayer();
+            gameController.attemptDiceRoll(current);
+        });
 
-		// Highlight the dice result
-		diceResultLabel.setFont(
-		        new Font(Font.SANS_SERIF, Font.BOLD, 40)
-		);
-		diceResultLabel.setHorizontalAlignment(SwingConstants.CENTER);
-		diceResultLabel.setOpaque(true);
-		diceResultLabel.setBackground(new Color(240, 244, 248));
-		diceResultLabel.setBorder(
-		        BorderFactory.createEmptyBorder(12, 12, 12, 12)
-		);
+        GridBagConstraints c = new GridBagConstraints();
+        c.gridx = 0;
+        c.weightx = 1;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.insets = new Insets(2, 0, 10, 0);
+        c.gridy = 0;
+        add(activePlayerLabel, c);
+        c.gridy = 1;
+        c.insets = new Insets(4, 0, 8, 0);
+        add(title, c);
+        c.gridy = 2;
+        c.fill = GridBagConstraints.NONE;
+        c.insets = new Insets(2, 0, 12, 0);
+        add(diceBox, c);
+        c.gridy = 3;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.insets = new Insets(3, 0, 0, 0);
+        add(rollButton, c);
+    }
 
+    public void updateActivePlayerDisplay(String playerName) {
+        activePlayerLabel.setText("Active Player: " + playerName);
+    }
 
-		// 3. Update the Action Listener to handle both Turn Logic and Hila's validation
-		rollButton.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				// Lock the button until the roll is handled (Hila's logic)
-				rollButton.setEnabled(false);
+    public void updateDiceResultDisplay(int result) {
+        diceResultLabel.setText(String.valueOf(result));
+        if (onRoll != null) onRoll.accept(result);
+    }
 
-				// Fetch the current active player from the controller
-				Player currentPlayer = gameController.getTurnManager().getActivePlayer();
+    public void setOnRoll(IntConsumer callback) {
+        onRoll = callback;
+    }
 
-				// Trigger the controller logic instead of rolling locally
-				gameController.attemptDiceRoll(currentPlayer);
-			}
-		});
+    public void setRollEnabled(boolean enabled) {
+        rollButton.setEnabled(enabled);
+        rollButton.repaint();
+    }
 
+    private static final class RoundedDiceBox extends JPanel {
+        private static final long serialVersionUID = 1L;
+        RoundedDiceBox() { setOpaque(false); }
+        @Override protected void paintComponent(Graphics graphics) {
+            Graphics2D g = (Graphics2D) graphics.create();
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setColor(new Color(39, 89, 145, 33));
+            g.fillRoundRect(4, 6, getWidth() - 8, getHeight() - 9, 26, 26);
+            g.setColor(Color.WHITE);
+            g.fillRoundRect(2, 2, getWidth() - 7, getHeight() - 10, 24, 24);
+            g.setColor(new Color(164, 194, 229));
+            g.setStroke(new BasicStroke(2));
+            g.drawRoundRect(2, 2, getWidth() - 7, getHeight() - 10, 24, 24);
+            g.dispose();
+            super.paintComponent(graphics);
+        }
+    }
 
-
-		// Align sidebar components
-		activePlayerLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-		diceTitleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-		diceResultLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-		rollButton.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-		// Make dice result and button fill available width
-		diceResultLabel.setMaximumSize(
-		        new Dimension(Integer.MAX_VALUE, 86)
-		);
-
-		rollButton.setMaximumSize(
-		        new Dimension(Integer.MAX_VALUE, 40)
-		);
-
-		// Arrange components vertically
-		add(activePlayerLabel);
-		add(Box.createVerticalStrut(18));
-
-		add(diceTitleLabel);
-		add(Box.createVerticalStrut(6));
-		add(diceResultLabel);
-		add(Box.createVerticalStrut(14));
-
-		add(rollButton);
-
-
-		// Set a consistent button height
-		rollButton.setMaximumSize(
-		        new Dimension(Integer.MAX_VALUE, 38)
-		);
-
-		// Add components vertically with spacing
-		add(activePlayerLabel);
-		add(Box.createVerticalStrut(12));
-
-		add(diceResultLabel);
-		add(Box.createVerticalStrut(12));
-
-		add(rollButton);
-
-	}
-
-	// 4. Methods for the GameController to update the UI
-	public void updateActivePlayerDisplay(String playerName) {
-		activePlayerLabel.setText("Active Player: " + playerName);
-	}
-
-	public void updateDiceResultDisplay(int result) {
-		diceResultLabel.setText(String.valueOf(result));
-
-		// Pass the result to Hila's movement validation logic
-		if (onRoll != null) {
-			onRoll.accept(result);
-		}
-	}
-
-	// Sets the action to perform after rolling the die
-	public void setOnRoll(IntConsumer onRoll) {
-		this.onRoll = onRoll;
-	}
-
-	// give controller option to restart the dice
-	public void setRollEnabled(boolean enabled) {
-		rollButton.setEnabled(enabled);
-	}
+    private static final class BlueRollButton extends JButton {
+        private static final long serialVersionUID = 1L;
+        BlueRollButton() {
+            super("ROLL DICE");
+            setOpaque(false);
+            setContentAreaFilled(false);
+            setBorderPainted(false);
+            setFocusPainted(false);
+            setForeground(Color.WHITE);
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        }
+        @Override protected void paintComponent(Graphics graphics) {
+            Graphics2D g = (Graphics2D) graphics.create();
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON);
+            int w = getWidth(), h = getHeight();
+            g.setColor(new Color(36, 73, 127, 37));
+            g.fillRoundRect(3, 6, w - 6, h - 8, h, h);
+            Color bright = isEnabled() ? new Color(25, 152, 252) : new Color(156, 180, 205);
+            Color dark = isEnabled() ? new Color(12, 87, 203) : new Color(115, 136, 157);
+            g.setPaint(new GradientPaint(0, 2, bright, 0, h, dark));
+            g.fillRoundRect(2, 2, w - 5, h - 9, h, h);
+            if (getModel().isRollover() && isEnabled()) {
+                g.setColor(new Color(255, 255, 255, 70));
+                g.setStroke(new BasicStroke(2));
+                g.drawRoundRect(5, 4, w - 12, h - 16, h, h);
+            }
+            g.dispose();
+            super.paintComponent(graphics);
+        }
+    }
 }
