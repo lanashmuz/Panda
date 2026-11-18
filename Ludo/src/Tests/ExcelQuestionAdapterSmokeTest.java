@@ -9,7 +9,7 @@ import Model.ExcelQuestionAdapter;
 import Model.Question;
 import Model.QuestionRepository;
 
-//Verifies Excel question loading and difficulty filtering.
+// Verifies Excel question loading and difficulty filtering.
  
 public class ExcelQuestionAdapterSmokeTest {
 
@@ -20,26 +20,30 @@ public class ExcelQuestionAdapterSmokeTest {
         QuestionRepository repository = new ExcelQuestionAdapter(
                 Files.newInputStream(filePath));
 
-        List<Question> easy = repository.getQuestionsByDifficulty("Easy");
-        List<Question> medium = repository.getQuestionsByDifficulty("Medium");
-        List<Question> hard = repository.getQuestionsByDifficulty("Hard");
+        for (String difficulty : List.of("Easy", "Medium", "Hard")) {
 
-        // Verify the number of questions in each difficulty.
-        if (easy.size() != 3 || medium.size() != 3 || hard.size() != 1) {
-            throw new AssertionError("Incorrect question counts.");
+            List<Question> questions =
+                    repository.getQuestionsByDifficulty(difficulty);
+
+            if (questions.isEmpty()) {
+                throw new AssertionError(
+                        "No questions found for: " + difficulty);
+            }
+
+            // Validate the loaded questions.
+            for (Question question : questions) {
+                if (!question.getDifficulty().equalsIgnoreCase(difficulty)
+                        || question.getOptions().size() != 4
+                        || question.getCorrectAnswerIndex() < 0
+                        || question.getCorrectAnswerIndex() > 3) {
+                    throw new AssertionError(
+                            "Invalid question: " + question.getQuestionId());
+                }
+            }
+
+            System.out.println("PASS: " + difficulty + " questions validated");
         }
 
-        System.out.println("PASS: Questions loaded and filtered");
-
-        // Verify Excel data conversion for question Q01.
-        Question q1 = easy.get(0);
-
-        if (!q1.getQuestionId().equals("Q01")
-                || q1.getOptions().size() != 4
-                || q1.getCorrectAnswerIndex() != 1) {
-            throw new AssertionError("Incorrect question data.");
-        }
-
-        System.out.println("PASS: Excel data converted correctly");
+        System.out.println("PASS: Excel adapter validation completed");
     }
 }

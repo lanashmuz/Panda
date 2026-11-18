@@ -19,7 +19,8 @@ public class Question {
 
 	public Question(String questionId, String questionText, List<String> options, int correctAnswerIndex,
 			String explanation, String difficulty, String topic, String source) {
-		// Validates that the question has exactly four options and a valid correct answer index
+		// Validates that the question has exactly four options and a valid correct
+		// answer index
 		if (options == null || options.size() != 4) {
 			throw new IllegalArgumentException("A question must have exactly four answer options.");
 		}
@@ -37,39 +38,42 @@ public class Question {
 		this.topic = topic;
 		this.source = source;
 	}
-	
 
-public String getQuestionId() {
-    return questionId;
-}
+	public String getQuestionId() {
+		return questionId;
+	}
 
-public String getQuestionText() {
-    return questionText;
-}
+	public String getQuestionText() {
+		return questionText;
+	}
 
-public List<String> getOptions() {
-    return options;
-}
+	public List<String> getOptions() {
+		return options;
+	}
 
-public int getCorrectAnswerIndex() {
-    return correctAnswerIndex;
-}
+	public int getCorrectAnswerIndex() {
+		return correctAnswerIndex;
+	}
 
-public String getExplanation() {
-    return explanation;
-}
+	public String getExplanation() {
+		return explanation;
+	}
 
-public String getDifficulty() {
-    return difficulty;
-}
+	public String getDifficulty() {
+		return difficulty;
+	}
 
-public String getTopic() {
-    return topic;
-}
+	public String getTopic() {
+		return topic;
+	}
 
-public String getSource() {
-    return source;
-}
+	public String getSource() {
+		return source;
+	}
 
+//Checks whether the selected answer is correct.
+	public boolean isCorrectAnswer(int selectedAnswerIndex) {
+		return selectedAnswerIndex == correctAnswerIndex;
+	}
 
 }

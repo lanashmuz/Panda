@@ -19,6 +19,15 @@ public class QuestionSmokeTest {
                 "Software Design",
                 "Lecture"
         );
+        
+
+     // Verify correct and incorrect answers.
+     if (!question.isCorrectAnswer(1) || question.isCorrectAnswer(0)) {
+         throw new AssertionError("Answer validation failed.");
+     }
+
+     System.out.println("PASS: Answer validation");
+
 
         // Verify that the question stores the correct data.
         if (!question.getQuestionId().equals("Q01")
