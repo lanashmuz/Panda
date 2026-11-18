@@ -12,116 +12,156 @@ import Model.GameResult;
 import Model.GameResultCsvWriter;
 
 /**
- * Verifies CSV game result persistence and schema validation.
+ * Verifies CSV game result persistence, schema validation, ranking fields, and
+ * duplicate game ID prevention.
  */
 public class GameResultCsvWriterSmokeTest {
 
-    /**
-     * Tests CSV creation, appending, ranking fields, and invalid headers.
-     *
-     * @param args command-line arguments
-     * @throws IOException if a test file operation fails
-     */
-    public static void main(String[] args) throws IOException {
+	/**
+	 * Tests CSV creation, appending, ranking fields, invalid headers, and duplicate
+	 * game IDs.
+	 *
+	 * @param args command-line arguments
+	 * @throws IOException if a test file operation fails
+	 */
+	public static void main(String[] args) throws IOException {
 
-        Path directory = Files.createTempDirectory("panda-history-test-");
-        Path csvFile = directory.resolve("history.csv");
-        Path invalidFile = directory.resolve("invalid.csv");
+		Path directory = Files.createTempDirectory("panda-history-test-");
 
-        try {
-            LocalDateTime timestamp =
-                    LocalDateTime.of(2026, 11, 18, 15, 0);
+		Path csvFile = directory.resolve("history.csv");
+		Path invalidFile = directory.resolve("invalid.csv");
 
-            GameResultCsvWriter writer =
-                    new GameResultCsvWriter(csvFile);
+		try {
+			LocalDateTime timestamp = LocalDateTime.of(2026, 11, 18, 15, 0);
 
-            writer.append(new GameResult(
-                    1, "Easy", timestamp,
-                    List.of("Alice", "Bob"), 600));
+			GameResultCsvWriter writer = new GameResultCsvWriter(csvFile);
 
-            check(Files.exists(csvFile),
-                    "CSV file was not created.");
+			/*
+			 * Verify that the writer creates a new CSV file when no previous game history
+			 * exists.
+			 */
+			writer.append(new GameResult(1, "Easy", timestamp, List.of("Alice", "Bob"), 600));
 
-            System.out.println("PASS: CSV file created");
+			check(Files.exists(csvFile), "CSV file was not created.");
 
-            // A new writer simulates reopening the file in another run.
-            writer = new GameResultCsvWriter(csvFile);
+			System.out.println("PASS: CSV file created");
 
-            writer.append(new GameResult(
-                    2, "Medium", timestamp,
-                    List.of("Alice", "Bob", "Charlie"), 900));
+			/*
+			 * Verify that reopening the writer preserves previous results and appends new
+			 * game records.
+			 */
+			writer = new GameResultCsvWriter(csvFile);
 
-            writer.append(new GameResult(
-                    3, "Hard", timestamp,
-                    List.of("Alice, Jr.", "Bob", "Charlie", "Dana"), 1800));
+			writer.append(new GameResult(2, "Medium", timestamp, List.of("Alice", "Bob", "Charlie"), 900));
 
-            List<String> lines = Files.readAllLines(
-                    csvFile, StandardCharsets.UTF_8);
+			writer.append(new GameResult(3, "Hard", timestamp, List.of("Alice, Jr.", "Bob", "Charlie", "Dana"), 1800));
 
-            check(lines.size() == 4,
-                    "Expected one header and three game records.");
+			List<String> lines = Files.readAllLines(csvFile, StandardCharsets.UTF_8);
 
-            check(lines.get(0).contains("4th_place_name"),
-                    "Incorrect fourth-place column name.");
+			check(lines.size() == 4, "Expected one header and three game records.");
 
-            System.out.println("PASS: CSV schema verified");
-            System.out.println("PASS: Results appended successfully");
+			/*
+			 * Verify that the CSV header exactly matches the official schema, including
+			 * column order.
+			 */
+			check(lines.get(0).equals("gameID,difficulty,timestamp(DD/MM/YYYY; HH:MM:SS),"
+					+ "1st_place_name,2nd_place_name,3rd_place_name," + "4rd_place_name,game_duration(HH:MM:SS)"),
+					"CSV header does not match the official schema.");
 
-            String[] twoPlayerFields = lines.get(1).split(",", -1);
-            String[] threePlayerFields = lines.get(2).split(",", -1);
+			System.out.println("PASS: CSV schema verified");
+			System.out.println("PASS: Results appended successfully");
 
-            check(twoPlayerFields.length == 8,
-                    "Incorrect CSV column count.");
+			/*
+			 * Verify timestamp formatting, game duration, and unused ranking fields for two
+			 * and three players.
+			 */
+			String[] twoPlayerFields = lines.get(1).split(",", -1);
 
-            check(twoPlayerFields[5].isEmpty()
-                    && twoPlayerFields[6].isEmpty(),
-                    "Unused player ranks must be empty.");
+			String[] threePlayerFields = lines.get(2).split(",", -1);
 
-            check(threePlayerFields[6].isEmpty(),
-                    "Fourth place must be empty for three players.");
+			check(twoPlayerFields[2].equals("18/11/2026;15:00:00"), "Incorrect timestamp format.");
 
-            check(lines.get(3).contains("\"Alice, Jr.\""),
-                    "CSV special characters were not escaped.");
+			check(twoPlayerFields[7].equals("00:10:00"), "Incorrect game duration format.");
 
-            System.out.println("PASS: Two-to-four player rankings");
-            System.out.println("PASS: CSV special characters escaped");
+			check(threePlayerFields[7].equals("00:15:00"), "Incorrect duration for second game.");
 
-            Files.writeString(
-                    invalidFile, "wrong_header\n",
-                    StandardCharsets.UTF_8);
+			check(twoPlayerFields.length == 8, "Incorrect CSV column count.");
 
-            boolean rejected = false;
+			check(twoPlayerFields[5].isEmpty() && twoPlayerFields[6].isEmpty(), "Unused player ranks must be empty.");
 
-            try {
-                new GameResultCsvWriter(invalidFile).append(
-                        new GameResult(
-                                4, "Easy", timestamp,
-                                List.of("Alice", "Bob"), 300));
-            } catch (IOException expected) {
-                rejected = true;
-            }
+			check(threePlayerFields[6].isEmpty(), "Fourth place must be empty for three players.");
 
-            check(rejected, "Invalid CSV header was accepted.");
+			/*
+			 * Verify that player names containing commas are correctly escaped in the CSV
+			 * output.
+			 */
+			check(lines.get(3).contains("\"Alice, Jr.\""), "CSV special characters were not escaped.");
 
-            System.out.println("PASS: Invalid CSV header rejected");
-            System.out.println("ALL CSV WRITER TESTS PASSED");
+			System.out.println("PASS: Two-to-four player rankings");
+			System.out.println("PASS: CSV special characters escaped");
 
-        } finally {
-            Files.deleteIfExists(csvFile);
-            Files.deleteIfExists(invalidFile);
-            Files.deleteIfExists(directory);
-        }
-    }
+			/*
+			 * Verify that an existing CSV file with an invalid header is rejected.
+			 */
+			Files.writeString(invalidFile, "wrong_header\n", StandardCharsets.UTF_8);
 
-    /**
-     * Fails the test if a condition is false.
-     *
-     * @param condition condition to verify
-     * @param message failure description
-     */
-    private static void check(boolean condition, String message) {
-        if (!condition) {
-            throw new AssertionError(message);
-        }
-    }
+			boolean rejected = false;
+
+			try {
+				new GameResultCsvWriter(invalidFile)
+						.append(new GameResult(4, "Easy", timestamp, List.of("Alice", "Bob"), 300));
+
+			} catch (IOException expected) {
+				rejected = true;
+			}
+
+			check(rejected, "Invalid CSV header was accepted.");
+
+			System.out.println("PASS: Invalid CSV header rejected");
+
+			/*
+			 * Verify that attempting to save an existing game ID is rejected without
+			 * modifying the CSV history.
+			 */
+			String originalContent = Files.readString(csvFile, StandardCharsets.UTF_8);
+
+			boolean duplicateRejected = false;
+
+			try {
+				writer.append(new GameResult(2, "Easy", timestamp, List.of("Alice", "Bob"), 300));
+
+			} catch (IOException expected) {
+				duplicateRejected = true;
+			}
+
+			check(duplicateRejected, "Duplicate game ID must be rejected.");
+
+			check(Files.readString(csvFile, StandardCharsets.UTF_8).equals(originalContent),
+					"Duplicate ID attempt must not modify the CSV history.");
+
+			System.out.println("PASS: Duplicate game ID rejected");
+
+			// Print success only after all tests have passed.
+			System.out.println("ALL CSV WRITER TESTS PASSED");
+
+		} finally {
+			// Delete temporary files created during the test.
+			Files.deleteIfExists(csvFile);
+			Files.deleteIfExists(invalidFile);
+			Files.deleteIfExists(directory);
+		}
+	}
+
+	/**
+	 * Fails the test if a condition is false.
+	 *
+	 * @param condition condition to verify
+	 * @param message   failure description
+	 */
+	private static void check(boolean condition, String message) {
+
+		if (!condition) {
+			throw new AssertionError(message);
+		}
+	}
 }

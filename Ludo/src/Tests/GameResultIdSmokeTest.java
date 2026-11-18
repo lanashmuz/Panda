@@ -16,74 +16,122 @@ import Model.GameResultCsvWriter;
  */
 public class GameResultIdSmokeTest {
 
-	/**
-	 * Tests ID generation, persistence, and invalid history handling.
-	 *
-	 * @param args command-line arguments
-	 * @throws IOException if a test file operation fails
-	 */
-	public static void main(String[] args) throws IOException {
+    /**
+     * Tests ID generation, persistence, and invalid history handling.
+     *
+     * @param args command-line arguments
+     * @throws IOException if a test file operation fails
+     */
+    public static void main(String[] args) throws IOException {
 
-		Path directory = Files.createTempDirectory("panda-game-id-");
-		Path csvFile = directory.resolve("history.csv");
-		Path invalidFile = directory.resolve("invalid.csv");
+        Path directory = Files.createTempDirectory("panda-game-id-");
+        Path csvFile = directory.resolve("history.csv");
+        Path invalidFile = directory.resolve("invalid.csv");
 
-		try {
-			GameResultCsvWriter writer = new GameResultCsvWriter(csvFile);
+        try {
+            GameResultCsvWriter writer = new GameResultCsvWriter(csvFile);
 
-			check(writer.getNextGameId() == 1, "First game ID must be 1.");
+            // Verify that the first game ID is 1 when no history exists.
+            check(writer.getNextGameId() == 1,
+                    "First game ID must be 1.");
 
-			System.out.println("PASS: First game ID");
+            System.out.println("PASS: First game ID");
 
-			LocalDateTime timestamp = LocalDateTime.of(2026, 11, 18, 15, 30);
+            LocalDateTime timestamp =
+                    LocalDateTime.of(2026, 11, 18, 15, 30);
 
-			writer.append(new GameResult(1, "Easy", timestamp, List.of("Alice", "Bob"), 600));
+            // Save the first game and verify sequential ID generation.
+            writer.append(new GameResult(
+                    1, "Easy", timestamp,
+                    List.of("Alice", "Bob"), 600));
 
-			check(writer.getNextGameId() == 2, "Next game ID must be 2.");
+            check(writer.getNextGameId() == 2,
+                    "Next game ID must be 2.");
 
-			System.out.println("PASS: Sequential game ID");
+            System.out.println("PASS: Sequential game ID");
 
-			writer.append(new GameResult(7, "Medium", timestamp, List.of("Alice", "Bob", "Charlie"), 900));
+            // Verify that ID generation handles gaps in the history.
+            writer.append(new GameResult(
+                    7, "Medium", timestamp,
+                    List.of("Alice", "Bob", "Charlie"), 900));
 
-			GameResultCsvWriter reopenedWriter = new GameResultCsvWriter(csvFile);
+            // Reopen the history using a new writer instance.
+            GameResultCsvWriter reopenedWriter =
+                    new GameResultCsvWriter(csvFile);
 
-			check(reopenedWriter.getNextGameId() == 8, "Next ID must follow the highest existing ID.");
+            check(reopenedWriter.getNextGameId() == 8,
+                    "Next ID must follow the highest existing ID.");
 
-			System.out.println("PASS: ID after reopening history");
-			System.out.println("PASS: Gaps in game IDs handled");
+            System.out.println("PASS: ID after reopening history");
+            System.out.println("PASS: Gaps in game IDs handled");
 
-			Files.writeString(invalidFile, "wrong_header\n", StandardCharsets.UTF_8);
+            /*
+             * Verify that a CSV history with an invalid header
+             * is rejected.
+             */
+            Files.writeString(
+                    invalidFile,
+                    "wrong_header\n",
+                    StandardCharsets.UTF_8);
 
-			boolean rejected = false;
+            boolean rejected = false;
 
-			try {
-				new GameResultCsvWriter(invalidFile).getNextGameId();
-			} catch (IOException expected) {
-				rejected = true;
-			}
+            try {
+                new GameResultCsvWriter(invalidFile).getNextGameId();
+            } catch (IOException expected) {
+                rejected = true;
+            }
 
-			check(rejected, "Invalid CSV header must be rejected.");
+            check(rejected,
+                    "Invalid CSV header must be rejected.");
 
-			System.out.println("PASS: Invalid history rejected");
-			System.out.println("ALL GAME ID TESTS PASSED");
+            System.out.println("PASS: Invalid history rejected");
 
-		} finally {
-			Files.deleteIfExists(csvFile);
-			Files.deleteIfExists(invalidFile);
-			Files.deleteIfExists(directory);
-		}
-	}
+            /*
+             * Verify that a CSV history with a valid header
+             * but a non-numeric game ID is rejected.
+             */
+            Files.writeString(
+                    invalidFile,
+                    "gameID,difficulty,timestamp(DD/MM/YYYY; HH:MM:SS),"
+                    + "1st_place_name,2nd_place_name,3rd_place_name,"
+                    + "4rd_place_name,game_duration(HH:MM:SS)\n"
+                    + "abc,easy,18/11/2026;15:30:00,Alice,Bob,,,00:10:00\n",
+                    StandardCharsets.UTF_8);
 
-	/**
-	 * Fails the test if a condition is false.
-	 *
-	 * @param condition condition to verify
-	 * @param message   failure description
-	 */
-	private static void check(boolean condition, String message) {
+            boolean invalidIdRejected = false;
 
-		if (!condition) {
-			throw new AssertionError(message);
-		}
-	}
+            try {
+                new GameResultCsvWriter(invalidFile).getNextGameId();
+            } catch (IOException expected) {
+                invalidIdRejected = true;
+            }
+
+            check(invalidIdRejected,
+                    "Non-numeric game ID must be rejected.");
+
+            System.out.println("PASS: Invalid game ID rejected");
+
+            // Print the final message only after all tests pass.
+            System.out.println("ALL GAME ID TESTS PASSED");
+
+        } finally {
+            // Delete temporary test files and their directory.
+            Files.deleteIfExists(csvFile);
+            Files.deleteIfExists(invalidFile);
+            Files.deleteIfExists(directory);
+        }
+    }
+
+    /**
+     * Fails the test if a condition is false.
+     *
+     * @param condition condition to verify
+     * @param message failure description
+     */
+    private static void check(boolean condition, String message) {
+        if (!condition) {
+            throw new AssertionError(message);
+        }
+    }
 }

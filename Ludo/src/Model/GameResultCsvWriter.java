@@ -9,19 +9,22 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Saves completed game results to a CSV file.
+ * Validates the official CSV schema and prevents duplicate game IDs.
  */
 public class GameResultCsvWriter {
 
     private static final String HEADER =
             "gameID,difficulty,timestamp(DD/MM/YYYY; HH:MM:SS),"
             + "1st_place_name,2nd_place_name,3rd_place_name,"
-            + "4th_place_name,game_duration(HH:MM:SS)";
+            + "4rd_place_name,game_duration(HH:MM:SS)";
 
     private static final DateTimeFormatter TIMESTAMP_FORMAT =
             DateTimeFormatter.ofPattern(
@@ -35,19 +38,23 @@ public class GameResultCsvWriter {
      * @param filePath destination file path
      */
     public GameResultCsvWriter(Path filePath) {
-        this.filePath = Objects.requireNonNull(filePath);
+        this.filePath = Objects.requireNonNull(
+                filePath, "CSV file path cannot be null.");
     }
 
     /**
      * Appends a completed game result to the CSV file.
      * Creates the file and header if they do not exist.
+     * Rejects duplicate game IDs and invalid CSV histories.
      *
      * @param result completed game result
-     * @throws IOException if the file cannot be written or has an invalid header
+     * @throws IOException if the file cannot be written,
+     *                     the history is invalid, or the ID already exists
      */
     public void append(GameResult result) throws IOException {
 
-        Objects.requireNonNull(result, "Game result cannot be null.");
+        Objects.requireNonNull(
+                result, "Game result cannot be null.");
 
         Path parent = filePath.toAbsolutePath().getParent();
 
@@ -58,17 +65,18 @@ public class GameResultCsvWriter {
         boolean newFile = Files.notExists(filePath)
                 || Files.size(filePath) == 0;
 
-        if (!newFile) {
-            try (BufferedReader reader = Files.newBufferedReader(
-                    filePath, StandardCharsets.UTF_8)) {
+        /*
+         * Read existing game IDs and validate the CSV history
+         * before writing a new result.
+         */
+        Set<Long> existingIds = readStoredGameIds();
 
-                if (!HEADER.equals(reader.readLine())) {
-                    throw new IOException(
-                            "CSV header does not match the expected schema.");
-                }
-            }
+        if (existingIds.contains(result.getGameId())) {
+            throw new IOException(
+                    "Game ID already exists: " + result.getGameId());
         }
 
+        // Prepare the eight columns required by the official schema.
         List<String> columns = new ArrayList<>();
 
         columns.add(Long.toString(result.getGameId()));
@@ -92,6 +100,7 @@ public class GameResultCsvWriter {
 
         content.append(String.join(",", columns)).append('\n');
 
+        // Append the result without deleting previous game records.
         Files.writeString(
                 filePath,
                 content,
@@ -100,78 +109,119 @@ public class GameResultCsvWriter {
                 StandardOpenOption.APPEND
         );
     }
-    
 
-/**
- * Finds the next available game ID from the CSV history.
- *
- * @return the next game ID, starting at 1 for an empty history
- * @throws IOException if the history cannot be read or is invalid
- */
-public long getNextGameId() throws IOException {
+    /**
+     * Finds the next available game ID from the CSV history.
+     * Uses the highest existing ID to preserve continuity
+     * across application restarts.
+     *
+     * @return the next game ID, starting at 1 for empty history
+     * @throws IOException if the history cannot be read or is invalid
+     */
+    public long getNextGameId() throws IOException {
 
-    if (Files.notExists(filePath) || Files.size(filePath) == 0) {
-        return 1;
-    }
-
-    try (BufferedReader reader = Files.newBufferedReader(
-            filePath, StandardCharsets.UTF_8)) {
-
-        if (!HEADER.equals(reader.readLine())) {
-            throw new IOException(
-                    "CSV header does not match the expected schema.");
-        }
+        Set<Long> existingIds = readStoredGameIds();
 
         long maxId = 0;
-        boolean insideQuotes = false;
-        String line;
 
-        while ((line = reader.readLine()) != null) {
+        for (long id : existingIds) {
+            maxId = Math.max(maxId, id);
+        }
 
-            if (!insideQuotes && !line.isBlank()) {
+        if (maxId == Long.MAX_VALUE) {
+            throw new IOException(
+                    "Cannot generate another game ID.");
+        }
 
-                int separator = line.indexOf(',');
+        return maxId + 1;
+    }
 
-                if (separator <= 0) {
-                    throw new IOException("Invalid CSV record.");
-                }
+    /**
+     * Reads existing game IDs from the CSV history.
+     * Validates the header, game IDs, and quoted fields.
+     * Supports quoted CSV fields spanning multiple lines.
+     *
+     * @return a set containing all stored game IDs
+     * @throws IOException if the history is invalid
+     *                     or cannot be read
+     */
+    private Set<Long> readStoredGameIds() throws IOException {
 
-                try {
-                    long id = Long.parseLong(
-                            line.substring(0, separator));
+        Set<Long> ids = new HashSet<>();
+
+        if (Files.notExists(filePath)
+                || Files.size(filePath) == 0) {
+            return ids;
+        }
+
+        try (BufferedReader reader = Files.newBufferedReader(
+                filePath, StandardCharsets.UTF_8)) {
+
+            if (!HEADER.equals(reader.readLine())) {
+                throw new IOException(
+                        "CSV header does not match the expected schema.");
+            }
+
+            boolean insideQuotes = false;
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+
+                /*
+                 * A new CSV record begins only when the reader
+                 * is not inside a quoted multiline field.
+                 */
+                if (!insideQuotes && !line.isBlank()) {
+
+                    int separator = line.indexOf(',');
+
+                    if (separator <= 0) {
+                        throw new IOException("Invalid CSV record.");
+                    }
+
+                    long id;
+
+                    try {
+                        id = Long.parseLong(
+                                line.substring(0, separator));
+                    } catch (NumberFormatException e) {
+                        throw new IOException("Invalid game ID.", e);
+                    }
 
                     if (id <= 0) {
                         throw new IOException("Invalid game ID.");
                     }
 
-                    maxId = Math.max(maxId, id);
-
-                } catch (NumberFormatException e) {
-                    throw new IOException("Invalid game ID.", e);
+                    // Reject duplicate IDs already present in history.
+                    if (!ids.add(id)) {
+                        throw new IOException(
+                                "Duplicate game ID in CSV history: " + id);
+                    }
                 }
-            }
 
-            // Track quoted fields that may span multiple lines.
-            for (int i = 0; i < line.length(); i++) {
-                if (line.charAt(i) == '"') {
-                    if (insideQuotes
-                            && i + 1 < line.length()
-                            && line.charAt(i + 1) == '"') {
-                        i++;
-                    } else {
-                        insideQuotes = !insideQuotes;
+                // Track quoted fields that may span multiple lines.
+                for (int i = 0; i < line.length(); i++) {
+
+                    if (line.charAt(i) == '"') {
+
+                        if (insideQuotes
+                                && i + 1 < line.length()
+                                && line.charAt(i + 1) == '"') {
+                            i++;
+                        } else {
+                            insideQuotes = !insideQuotes;
+                        }
                     }
                 }
             }
+
+            if (insideQuotes) {
+                throw new IOException("Invalid CSV history.");
+            }
         }
 
-        if (insideQuotes || maxId == Long.MAX_VALUE) {
-            throw new IOException("Invalid CSV history.");
-        }
-
-        return maxId + 1;
+        return ids;
     }
-}
 
     /**
      * Escapes characters that require quoting in CSV fields.
