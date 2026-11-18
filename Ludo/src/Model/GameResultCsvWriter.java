@@ -100,6 +100,78 @@ public class GameResultCsvWriter {
                 StandardOpenOption.APPEND
         );
     }
+    
+
+/**
+ * Finds the next available game ID from the CSV history.
+ *
+ * @return the next game ID, starting at 1 for an empty history
+ * @throws IOException if the history cannot be read or is invalid
+ */
+public long getNextGameId() throws IOException {
+
+    if (Files.notExists(filePath) || Files.size(filePath) == 0) {
+        return 1;
+    }
+
+    try (BufferedReader reader = Files.newBufferedReader(
+            filePath, StandardCharsets.UTF_8)) {
+
+        if (!HEADER.equals(reader.readLine())) {
+            throw new IOException(
+                    "CSV header does not match the expected schema.");
+        }
+
+        long maxId = 0;
+        boolean insideQuotes = false;
+        String line;
+
+        while ((line = reader.readLine()) != null) {
+
+            if (!insideQuotes && !line.isBlank()) {
+
+                int separator = line.indexOf(',');
+
+                if (separator <= 0) {
+                    throw new IOException("Invalid CSV record.");
+                }
+
+                try {
+                    long id = Long.parseLong(
+                            line.substring(0, separator));
+
+                    if (id <= 0) {
+                        throw new IOException("Invalid game ID.");
+                    }
+
+                    maxId = Math.max(maxId, id);
+
+                } catch (NumberFormatException e) {
+                    throw new IOException("Invalid game ID.", e);
+                }
+            }
+
+            // Track quoted fields that may span multiple lines.
+            for (int i = 0; i < line.length(); i++) {
+                if (line.charAt(i) == '"') {
+                    if (insideQuotes
+                            && i + 1 < line.length()
+                            && line.charAt(i + 1) == '"') {
+                        i++;
+                    } else {
+                        insideQuotes = !insideQuotes;
+                    }
+                }
+            }
+        }
+
+        if (insideQuotes || maxId == Long.MAX_VALUE) {
+            throw new IOException("Invalid CSV history.");
+        }
+
+        return maxId + 1;
+    }
+}
 
     /**
      * Escapes characters that require quoting in CSV fields.
