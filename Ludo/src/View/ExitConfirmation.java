@@ -47,9 +47,34 @@ public final class ExitConfirmation {
 		showDialog(parent, title, message, null, false);
 	}
 
+	/**
+	 * Displays a themed informational message.
+	 */
+	public static void showMessage(Component parent, String title, String message) {
+		showDialog(parent, title, message, null, false);
+	}
+
+	/**
+	 * Displays a themed feedback dialog for correct or incorrect answers.
+	 */
+	public static void showAnswerFeedback(Component parent, boolean correct, String message) {
+
+		String title = correct ? "\u2713  Correct Answer!" : "\u2717  Incorrect Answer";
+
+		Color titleColor = correct ? new Color(25, 145, 83) : new Color(195, 65, 74);
+
+		showDialog(parent, title, message, null, false, titleColor, true);
+	}
+
 	/** Builds the shared dialog for exit confirmations and warnings. */
 	private static boolean showDialog(Component parent, String titleText, String messageText, String warningText,
 			boolean exitConfirmation) {
+
+		return showDialog(parent, titleText, messageText, warningText, exitConfirmation, NAVY, false);
+	}
+
+	private static boolean showDialog(Component parent, String titleText, String messageText, String warningText,
+			boolean exitConfirmation, Color titleColor, boolean answerFeedback) {
 		Window owner = SwingUtilities.getWindowAncestor(parent);
 		JDialog dialog = new JDialog(owner, Dialog.ModalityType.APPLICATION_MODAL);
 
@@ -97,7 +122,7 @@ public final class ExitConfirmation {
 
 		JLabel title = new JLabel(titleText);
 		title.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 24));
-		title.setForeground(NAVY);
+		title.setForeground(titleColor);
 
 		JButton closeButton = new JButton("\u00D7");
 		closeButton.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 27));
@@ -168,7 +193,10 @@ public final class ExitConfirmation {
 		content.add(actions, BorderLayout.SOUTH);
 
 		dialog.setContentPane(content);
-		dialog.setSize(new Dimension(520, warningText != null ? 238 : 213));
+		dialog.setSize(new Dimension(
+		        answerFeedback ? 560 : 520,
+		        answerFeedback ? 245 : (warningText != null ? 238 : 213)));
+		
 		// Round the dialog window without making it transparent.
 		try {
 			dialog.setShape(new RoundRectangle2D.Double(0, 0, dialog.getWidth(), dialog.getHeight(), 28, 28));
