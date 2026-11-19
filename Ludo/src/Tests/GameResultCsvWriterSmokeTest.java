@@ -141,11 +141,29 @@ public class GameResultCsvWriterSmokeTest {
 
 			System.out.println("PASS: Duplicate game ID rejected");
 
+			Path noNewlineFile = directory.resolve("no-newline.csv");
+
+// Verify appending when the existing file has no final newline.
+			Files.writeString(noNewlineFile, lines.get(0) + "\n" + lines.get(1), StandardCharsets.UTF_8);
+
+			GameResultCsvWriter noNewlineWriter = new GameResultCsvWriter(noNewlineFile);
+
+			noNewlineWriter.append(new GameResult(4, "Easy", timestamp, List.of("Alice", "Bob"), 300));
+
+			List<String> updatedLines = Files.readAllLines(noNewlineFile, StandardCharsets.UTF_8);
+
+			check(updatedLines.size() == 3, "New game record was merged with the previous record.");
+
+			check(updatedLines.get(2).startsWith("4,"), "New game record was not written on a separate line.");
+
+			System.out.println("PASS: Appending without final newline");
+
 			// Print success only after all tests have passed.
 			System.out.println("ALL CSV WRITER TESTS PASSED");
 
 		} finally {
 			// Delete temporary files created during the test.
+			Files.deleteIfExists(directory.resolve("no-newline.csv"));
 			Files.deleteIfExists(csvFile);
 			Files.deleteIfExists(invalidFile);
 			Files.deleteIfExists(directory);

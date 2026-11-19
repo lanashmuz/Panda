@@ -14,248 +14,249 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
 
 /**
- * Saves completed game results to a CSV file.
- * Validates the official CSV schema and prevents duplicate game IDs.
+ * Saves completed game results to a CSV file. Validates the official CSV schema
+ * and prevents duplicate game IDs.
  */
 public class GameResultCsvWriter {
 
-    private static final String HEADER =
-            "gameID,difficulty,timestamp(DD/MM/YYYY; HH:MM:SS),"
-            + "1st_place_name,2nd_place_name,3rd_place_name,"
-            + "4rd_place_name,game_duration(HH:MM:SS)";
+	private static final String HEADER = "gameID,difficulty,timestamp(DD/MM/YYYY; HH:MM:SS),"
+			+ "1st_place_name,2nd_place_name,3rd_place_name," + "4rd_place_name,game_duration(HH:MM:SS)";
 
-    private static final DateTimeFormatter TIMESTAMP_FORMAT =
-            DateTimeFormatter.ofPattern(
-                    "dd/MM/uuuu;HH:mm:ss", Locale.ROOT);
+	private static final DateTimeFormatter TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("dd/MM/uuuu;HH:mm:ss",
+			Locale.ROOT);
 
-    private final Path filePath;
+	private final Path filePath;
 
-    /**
-     * Creates a writer for the specified CSV file.
-     *
-     * @param filePath destination file path
-     */
-    public GameResultCsvWriter(Path filePath) {
-        this.filePath = Objects.requireNonNull(
-                filePath, "CSV file path cannot be null.");
-    }
+	/**
+	 * Creates a writer for the specified CSV file.
+	 *
+	 * @param filePath destination file path
+	 */
+	public GameResultCsvWriter(Path filePath) {
+		this.filePath = Objects.requireNonNull(filePath, "CSV file path cannot be null.");
+	}
 
-    /**
-     * Appends a completed game result to the CSV file.
-     * Creates the file and header if they do not exist.
-     * Rejects duplicate game IDs and invalid CSV histories.
-     *
-     * @param result completed game result
-     * @throws IOException if the file cannot be written,
-     *                     the history is invalid, or the ID already exists
-     */
-    public void append(GameResult result) throws IOException {
+	/**
+	 * Appends a completed game result to the CSV file. Creates the file and header
+	 * if they do not exist. Rejects duplicate game IDs and invalid CSV histories.
+	 *
+	 * @param result completed game result
+	 * @throws IOException if the file cannot be written, the history is invalid, or
+	 *                     the ID already exists
+	 */
+	public void append(GameResult result) throws IOException {
 
-        Objects.requireNonNull(
-                result, "Game result cannot be null.");
+		Objects.requireNonNull(result, "Game result cannot be null.");
 
-        Path parent = filePath.toAbsolutePath().getParent();
+		Path parent = filePath.toAbsolutePath().getParent();
 
-        if (parent != null) {
-            Files.createDirectories(parent);
-        }
+		if (parent != null) {
+			Files.createDirectories(parent);
+		}
 
-        boolean newFile = Files.notExists(filePath)
-                || Files.size(filePath) == 0;
+		boolean newFile = Files.notExists(filePath) || Files.size(filePath) == 0;
 
-        /*
-         * Read existing game IDs and validate the CSV history
-         * before writing a new result.
-         */
-        Set<Long> existingIds = readStoredGameIds();
+		/*
+		 * Read existing game IDs and validate the CSV history before writing a new
+		 * result.
+		 */
+		Set<Long> existingIds = readStoredGameIds();
 
-        if (existingIds.contains(result.getGameId())) {
-            throw new IOException(
-                    "Game ID already exists: " + result.getGameId());
-        }
+		if (existingIds.contains(result.getGameId())) {
+			throw new IOException("Game ID already exists: " + result.getGameId());
+		}
 
-        // Prepare the eight columns required by the official schema.
-        List<String> columns = new ArrayList<>();
+		// Prepare the eight columns required by the official schema.
+		List<String> columns = new ArrayList<>();
 
-        columns.add(Long.toString(result.getGameId()));
-        columns.add(result.getDifficulty());
-        columns.add(TIMESTAMP_FORMAT.format(result.getTimestamp()));
+		columns.add(Long.toString(result.getGameId()));
+		columns.add(result.getDifficulty());
+		columns.add(TIMESTAMP_FORMAT.format(result.getTimestamp()));
 
-        List<String> players = result.getRankedPlayerNames();
+		List<String> players = result.getRankedPlayerNames();
 
-        for (int i = 0; i < 4; i++) {
-            columns.add(i < players.size()
-                    ? escapeCsv(players.get(i)) : "");
-        }
+		for (int i = 0; i < 4; i++) {
+			columns.add(i < players.size() ? escapeCsv(players.get(i)) : "");
+		}
 
-        columns.add(formatDuration(result.getDurationSeconds()));
+		columns.add(formatDuration(result.getDurationSeconds()));
 
-        StringBuilder content = new StringBuilder();
+		StringBuilder content = new StringBuilder();
 
-        if (newFile) {
-            content.append(HEADER).append('\n');
-        }
+		if (newFile) {
+			content.append(HEADER).append('\n');
+		} else if (!endsWithLineBreak()) {
+			content.append('\n');
+		}
 
-        content.append(String.join(",", columns)).append('\n');
+		content.append(String.join(",", columns)).append('\n');
 
-        // Append the result without deleting previous game records.
-        Files.writeString(
-                filePath,
-                content,
-                StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.APPEND
-        );
-    }
+		// Append the result without deleting previous game records.
+		Files.writeString(filePath, content, StandardCharsets.UTF_8, StandardOpenOption.CREATE,
+				StandardOpenOption.APPEND);
+	}
+	
+	/**
+	 * Checks whether the CSV file ends with a line break.
+	 *
+	 * @return true if the file ends with a line break
+	 * @throws IOException if the file cannot be read
+	 */
+	private boolean endsWithLineBreak() throws IOException {
 
-    /**
-     * Finds the next available game ID from the CSV history.
-     * Uses the highest existing ID to preserve continuity
-     * across application restarts.
-     *
-     * @return the next game ID, starting at 1 for empty history
-     * @throws IOException if the history cannot be read or is invalid
-     */
-    public long getNextGameId() throws IOException {
+	    try (SeekableByteChannel channel = Files.newByteChannel(
+	            filePath, StandardOpenOption.READ)) {
 
-        Set<Long> existingIds = readStoredGameIds();
+	        long size = channel.size();
 
-        long maxId = 0;
+	        if (size == 0) {
+	            return true;
+	        }
 
-        for (long id : existingIds) {
-            maxId = Math.max(maxId, id);
-        }
+	        ByteBuffer buffer = ByteBuffer.allocate(1);
+	        channel.position(size - 1);
 
-        if (maxId == Long.MAX_VALUE) {
-            throw new IOException(
-                    "Cannot generate another game ID.");
-        }
+	        if (channel.read(buffer) != 1) {
+	            throw new IOException("Cannot read the last CSV byte.");
+	        }
 
-        return maxId + 1;
-    }
+	        buffer.flip();
+	        byte lastByte = buffer.get();
 
-    /**
-     * Reads existing game IDs from the CSV history.
-     * Validates the header, game IDs, and quoted fields.
-     * Supports quoted CSV fields spanning multiple lines.
-     *
-     * @return a set containing all stored game IDs
-     * @throws IOException if the history is invalid
-     *                     or cannot be read
-     */
-    private Set<Long> readStoredGameIds() throws IOException {
+	        return lastByte == '\n' || lastByte == '\r';
+	    }
+	}
 
-        Set<Long> ids = new HashSet<>();
+	/**
+	 * Finds the next available game ID from the CSV history. Uses the highest
+	 * existing ID to preserve continuity across application restarts.
+	 *
+	 * @return the next game ID, starting at 1 for empty history
+	 * @throws IOException if the history cannot be read or is invalid
+	 */
+	public long getNextGameId() throws IOException {
 
-        if (Files.notExists(filePath)
-                || Files.size(filePath) == 0) {
-            return ids;
-        }
+		Set<Long> existingIds = readStoredGameIds();
 
-        try (BufferedReader reader = Files.newBufferedReader(
-                filePath, StandardCharsets.UTF_8)) {
+		long maxId = 0;
 
-            if (!HEADER.equals(reader.readLine())) {
-                throw new IOException(
-                        "CSV header does not match the expected schema.");
-            }
+		for (long id : existingIds) {
+			maxId = Math.max(maxId, id);
+		}
 
-            boolean insideQuotes = false;
-            String line;
+		if (maxId == Long.MAX_VALUE) {
+			throw new IOException("Cannot generate another game ID.");
+		}
 
-            while ((line = reader.readLine()) != null) {
+		return maxId + 1;
+	}
 
-                /*
-                 * A new CSV record begins only when the reader
-                 * is not inside a quoted multiline field.
-                 */
-                if (!insideQuotes && !line.isBlank()) {
+	/**
+	 * Reads existing game IDs from the CSV history. Validates the header, game IDs,
+	 * and quoted fields. Supports quoted CSV fields spanning multiple lines.
+	 *
+	 * @return a set containing all stored game IDs
+	 * @throws IOException if the history is invalid or cannot be read
+	 */
+	private Set<Long> readStoredGameIds() throws IOException {
 
-                    int separator = line.indexOf(',');
+		Set<Long> ids = new HashSet<>();
 
-                    if (separator <= 0) {
-                        throw new IOException("Invalid CSV record.");
-                    }
+		if (Files.notExists(filePath) || Files.size(filePath) == 0) {
+			return ids;
+		}
 
-                    long id;
+		try (BufferedReader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8)) {
 
-                    try {
-                        id = Long.parseLong(
-                                line.substring(0, separator));
-                    } catch (NumberFormatException e) {
-                        throw new IOException("Invalid game ID.", e);
-                    }
+			if (!HEADER.equals(reader.readLine())) {
+				throw new IOException("CSV header does not match the expected schema.");
+			}
 
-                    if (id <= 0) {
-                        throw new IOException("Invalid game ID.");
-                    }
+			boolean insideQuotes = false;
+			String line;
 
-                    // Reject duplicate IDs already present in history.
-                    if (!ids.add(id)) {
-                        throw new IOException(
-                                "Duplicate game ID in CSV history: " + id);
-                    }
-                }
+			while ((line = reader.readLine()) != null) {
 
-                // Track quoted fields that may span multiple lines.
-                for (int i = 0; i < line.length(); i++) {
+				/*
+				 * A new CSV record begins only when the reader is not inside a quoted multiline
+				 * field.
+				 */
+				if (!insideQuotes && !line.isBlank()) {
 
-                    if (line.charAt(i) == '"') {
+					int separator = line.indexOf(',');
 
-                        if (insideQuotes
-                                && i + 1 < line.length()
-                                && line.charAt(i + 1) == '"') {
-                            i++;
-                        } else {
-                            insideQuotes = !insideQuotes;
-                        }
-                    }
-                }
-            }
+					if (separator <= 0) {
+						throw new IOException("Invalid CSV record.");
+					}
 
-            if (insideQuotes) {
-                throw new IOException("Invalid CSV history.");
-            }
-        }
+					long id;
 
-        return ids;
-    }
+					try {
+						id = Long.parseLong(line.substring(0, separator));
+					} catch (NumberFormatException e) {
+						throw new IOException("Invalid game ID.", e);
+					}
 
-    /**
-     * Escapes characters that require quoting in CSV fields.
-     *
-     * @param value field value
-     * @return escaped CSV value
-     */
-    private static String escapeCsv(String value) {
+					if (id <= 0) {
+						throw new IOException("Invalid game ID.");
+					}
 
-        if (value.contains(",")
-                || value.contains("\"")
-                || value.contains("\n")
-                || value.contains("\r")) {
+					// Reject duplicate IDs already present in history.
+					if (!ids.add(id)) {
+						throw new IOException("Duplicate game ID in CSV history: " + id);
+					}
+				}
 
-            return "\"" + value.replace("\"", "\"\"") + "\"";
-        }
+				// Track quoted fields that may span multiple lines.
+				for (int i = 0; i < line.length(); i++) {
 
-        return value;
-    }
+					if (line.charAt(i) == '"') {
 
-    /**
-     * Formats elapsed seconds as HH:MM:SS.
-     *
-     * @param seconds game duration in seconds
-     * @return formatted duration
-     */
-    private static String formatDuration(long seconds) {
+						if (insideQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+							i++;
+						} else {
+							insideQuotes = !insideQuotes;
+						}
+					}
+				}
+			}
 
-        return String.format(
-                Locale.ROOT,
-                "%02d:%02d:%02d",
-                seconds / 3600,
-                (seconds / 60) % 60,
-                seconds % 60
-        );
-    }
+			if (insideQuotes) {
+				throw new IOException("Invalid CSV history.");
+			}
+		}
+
+		return ids;
+	}
+
+	/**
+	 * Escapes characters that require quoting in CSV fields.
+	 *
+	 * @param value field value
+	 * @return escaped CSV value
+	 */
+	private static String escapeCsv(String value) {
+
+		if (value.contains(",") || value.contains("\"") || value.contains("\n") || value.contains("\r")) {
+
+			return "\"" + value.replace("\"", "\"\"") + "\"";
+		}
+
+		return value;
+	}
+
+	/**
+	 * Formats elapsed seconds as HH:MM:SS.
+	 *
+	 * @param seconds game duration in seconds
+	 * @return formatted duration
+	 */
+	private static String formatDuration(long seconds) {
+
+		return String.format(Locale.ROOT, "%02d:%02d:%02d", seconds / 3600, (seconds / 60) % 60, seconds % 60);
+	}
 }
