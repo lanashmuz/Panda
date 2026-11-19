@@ -158,12 +158,64 @@ public class GameResultCsvWriterSmokeTest {
 
 			System.out.println("PASS: Appending without final newline");
 
+			Path blockedParent = directory.resolve("blocked-parent");
+
+// Create a regular file where a directory is required.
+			Files.writeString(blockedParent, "Existing content", StandardCharsets.UTF_8);
+
+			boolean writeErrorDetected = false;
+
+			try {
+				new GameResultCsvWriter(blockedParent.resolve("history.csv"))
+						.append(new GameResult(5, "Easy", timestamp, List.of("Alice", "Bob"), 300));
+
+			} catch (IOException expected) {
+				writeErrorDetected = true;
+			}
+
+			check(writeErrorDetected, "Invalid destination must cause an IOException.");
+
+			check(Files.readString(blockedParent, StandardCharsets.UTF_8).equals("Existing content"),
+					"Existing data must remain unchanged.");
+
+			System.out.println("PASS: File system error handled");
+
+			Path specialNamesFile = directory.resolve("special-names.csv");
+
+			GameResultCsvWriter specialWriter = new GameResultCsvWriter(specialNamesFile);
+
+// Verify CSV escaping of quotes and multiline player names.
+			specialWriter.append(new GameResult(1, "Easy", timestamp, List.of("Alice \"Ace\"", "Bob\nJunior"), 300));
+
+			String specialContent = Files.readString(specialNamesFile, StandardCharsets.UTF_8);
+
+			check(specialContent.contains("\"Alice \"\"Ace\"\"\""), "Quotation marks were not escaped correctly.");
+
+			check(specialContent.contains("\"Bob\nJunior\""), "Multiline player name was not preserved.");
+
+			System.out.println("PASS: Quotes and multiline names escaped");
+
+// Verify that multiline fields do not break history reading.
+			GameResultCsvWriter reopenedSpecialWriter = new GameResultCsvWriter(specialNamesFile);
+
+			check(reopenedSpecialWriter.getNextGameId() == 2, "Multiline CSV record affected game ID generation.");
+
+			reopenedSpecialWriter.append(new GameResult(2, "Medium", timestamp, List.of("Charlie", "Dana"), 600));
+
+			String updatedSpecialContent = Files.readString(specialNamesFile, StandardCharsets.UTF_8);
+
+			check(updatedSpecialContent.contains("\n2,medium,"), "New result was not appended correctly.");
+
+			System.out.println("PASS: Saving after multiline CSV record");
+
 			// Print success only after all tests have passed.
 			System.out.println("ALL CSV WRITER TESTS PASSED");
 
 		} finally {
 			// Delete temporary files created during the test.
 			Files.deleteIfExists(directory.resolve("no-newline.csv"));
+			Files.deleteIfExists(directory.resolve("blocked-parent"));
+			Files.deleteIfExists(directory.resolve("special-names.csv"));
 			Files.deleteIfExists(csvFile);
 			Files.deleteIfExists(invalidFile);
 			Files.deleteIfExists(directory);
